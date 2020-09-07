@@ -70,13 +70,13 @@ cp -r figs figures
 
 cat << EOF
 ## Input dataset:
-![input](figures/moons.png)
+![input](https://raw.githubusercontent.com/bougui505/quicksom/master/figures/moons.png)
 ## Umatrix:
-![Umatrix](figures/umat.png)
+![Umatrix](https://raw.githubusercontent.com/bougui505/quicksom/master/figures/umat.png)
 ## Data projection:
-![project](figures/project.png)
+![project](https://raw.githubusercontent.com/bougui505/quicksom/master/figures/project.png)
 ## Cluster projection:
-![project](figures/project_clusts.png)
+![project](https://raw.githubusercontent.com/bougui505/quicksom/master/figures/project_clusts.png)
 ## Cluster affectation:
-![project](figures/clusts.png)
+![project](https://raw.githubusercontent.com/bougui505/quicksom/master/figures/clusts.png)
 EOF
