@@ -1,0 +1,52 @@
+# Self-Organizing Map
+PyTorch implementation of a Self-Organizing Map.
+The implementation makes possible the use of a GPU if available for faster computations.
+It follows the scikit package semantics for training and usage of the model.
+
+# Requirements
+The SOM object requires numpy, scipy and torch installed.
+
+The graph-based clustering requires scikit-learn and the image-based clustering requires scikit-image. By default,
+we use the graph-based clustering
+
+The toy example uses scikit-learn for the toy dataset generation
+
+The MD application requires pymol for loading the trajectory
+
+Then one can run :
+```
+pip install quicksom
+```
+# SOM object interface
+The SOM object can be created using any grid size, with a optional periodic topology.
+One can also choose optimization parameters such as the number of epochs to train or the batch size
+```
+from quicksom import SOM
+
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+X = torch.from_numpy(X)
+X = X.to(device)
+m, n = 50, 50
+dim = X.shape[1]
+n_iter = 5
+batch_size = 10
+som = SOM(m, n, dim, n_iter, device=device, periodic=True)
+learning_error = som.fit(X, batch_size=batch_size)
+bmus, inference_error = som.predict(X, batch_size=batch_size)
+predicted_clusts, errors = som.predict_cluster(X)
+```
+```
+$ ./main.py
+
+
+```
+## Input dataset:
+![input](figures/moons.png)
+## Umatrix:
+![Umatrix](figures/umat.png)
+## Data projection:
+![project](figures/project.png)
+## Cluster projection:
+![project](figures/project_clusts.png)
+## Cluster affectation:
+![project](figures/clusts.png)
