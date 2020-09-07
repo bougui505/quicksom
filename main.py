@@ -49,9 +49,10 @@ X = X.to(device)
 if not os.path.exists('out/trained.p'):
     m, n = 50, 50
     dim = X.shape[1]
-    niter = 30
-    batch_size = 10
-    som = som.SOM(m, n, dim, niter=niter, device=device, precompute=True, periodic=False)
+    niter = 100
+    batch_size = 100
+    som = som.SOM(m, n, dim, niter=niter, device=device, precompute=True,
+                  periodic=False, sched='exp')
     learning_error = som.fit(X, batch_size=batch_size)
     bmus, inference_error = som.predict(X, batch_size=batch_size)
 
