@@ -26,10 +26,10 @@ except FileExistsError:
 
 # BUILD DATASET if does not exist yet or too short for the required number of points
 max_points = 10000
-create_data = True
+create_data = False
 if os.path.exists('data/moons.txt'):
     X = np.genfromtxt('data/moons.txt')
-    if len(X) > max_points:
+    if len(X) >= max_points:
         create_data = False
         y = X[:, 2]
         X = X[:, :2]
@@ -57,13 +57,14 @@ if not os.path.exists('out/trained.p'):
     som = som.SOM(m, n, dim, niter=niter, device=device)
     learning_error = som.fit(X, batch_size=batch_size)
     bmus, inference_error = som.predict(X, batch_size=batch_size)
-
-    pickle.dump(som, open('out/trained.p', 'wb'))
 else:
     pass
     som = pickle.load(open('out/trained.p', 'rb'))
     bmus, inference_error = som.predict(X)
 
+som.to_device('cpu')
+pickle.dump(som, open('out/trained.p', 'wb'))
+X = X.to('cpu')
 smap = som.centroids.cpu().numpy().reshape((som.m, som.n, -1))
 predicted_clusts, errors = som.predict_cluster(X)
 umat = som.umat
