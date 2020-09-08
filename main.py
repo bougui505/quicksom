@@ -41,6 +41,9 @@ if create_data:
 X = X[:max_points]
 y = y[:max_points]
 
+plt.scatter(X[:, 0], X[:, 1])
+plt.savefig('figs/moons.png')
+
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 X = torch.from_numpy(X)
 X = X.float()
