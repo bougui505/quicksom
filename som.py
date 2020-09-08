@@ -54,13 +54,13 @@ class SOM(nn.Module):
      """
 
     def __init__(self, m, n, dim,
-                 alpha=0.05,
+                 alpha=None,
                  sigma=None,
                  niter=2,
                  sched='linear',
                  device='cpu',
                  precompute=True,
-                 periodic=True):
+                 periodic=False):
 
         # topology of the som
         super(SOM, self).__init__()
@@ -73,7 +73,10 @@ class SOM(nn.Module):
         # optimization parameters
         self.sched = sched
         self.niter = niter
-        self.alpha = float(alpha)
+        if alpha is not None:
+            self.alpha = float(alpha)
+        else:
+            self.alpha = alpha
         if sigma is None:
             self.sigma = max(m, n) / 2.0
         else:
@@ -245,6 +248,8 @@ class SOM(nn.Module):
         return bmu_loc, mindist
 
     def fit(self, samples, batch_size=20, n_iter=None, print_each=20):
+        if self.alpha is None:
+            self.alpha = float((self.m * self.n) / samples.shape[0])
         if n_iter is None:
             n_iter = self.niter
         n_steps_periter = len(samples) // batch_size

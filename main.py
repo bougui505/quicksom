@@ -51,8 +51,7 @@ if not os.path.exists('out/trained.p'):
     dim = X.shape[1]
     niter = 100
     batch_size = 100
-    som = som.SOM(m, n, dim, niter=niter, device=device, precompute=True,
-                  periodic=False, sched='exp')
+    som = som.SOM(m, n, dim, niter=niter, device=device)
     learning_error = som.fit(X, batch_size=batch_size)
     bmus, inference_error = som.predict(X, batch_size=batch_size)
 
