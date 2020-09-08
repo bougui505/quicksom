@@ -60,11 +60,11 @@ if not os.path.exists('out/trained.p'):
 else:
     pass
     som = pickle.load(open('out/trained.p', 'rb'))
-    bmus, inference_error = som.predict(X)
 
 som.to_device('cpu')
 pickle.dump(som, open('out/trained.p', 'wb'))
 X = X.to('cpu')
+bmus, inference_error = som.predict(X)
 smap = som.centroids.cpu().numpy().reshape((som.m, som.n, -1))
 predicted_clusts, errors = som.predict_cluster(X)
 umat = som.umat
