@@ -71,6 +71,37 @@ pickle.dump(som, open('som.pickle', 'wb'))
 \`\`\`
 EOF
 
+cat << EOF
+Inference and analysis script sample:
+EOF
+
+cat << EOF
+\`\`\`python
+import pickle
+import numpy
+import torch
+
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+som = pickle.load(open('som.pickle', 'rb'))
+som.to_device(device)
+som.cluster(min_distance=1)
+X = numpy.load('contact_desc.npy')
+X = torch.from_numpy(X)
+X = X.float()
+X = X.to(device)
+smap = som.centroids.reshape((som.m, som.n, -1))
+som.smap = smap
+bmus, inference_error = som.predict(X)
+som.bmus = bmus
+som.inference_error = inference_error
+predicted_clusts, errors = som.predict_cluster(X)
+som.predicted_clusts = predicted_clusts
+som.errors = errors
+som.to_device('cpu')
+pickle.dump(som, open('som.pickle', 'wb'))
+\`\`\`
+EOF
+
 runcmd "./main.py"
 
 cp -r figs figures
