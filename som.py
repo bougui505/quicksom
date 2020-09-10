@@ -51,6 +51,7 @@ class SOM(nn.Module):
     :param device: the torch device to create the SOM onto. This can be modified using the to() method
     :param precompute: Speedup for initialization. Creates a little overhead for very small trainings
     :param periodic: Boolean to use a periodic topology
+    :param p_norm: p value for the p-norm distance to calculate between each vector pair for torch.cdist
      """
 
     def __init__(self, m, n, dim,
@@ -60,7 +61,8 @@ class SOM(nn.Module):
                  sched='linear',
                  device='cpu',
                  precompute=True,
-                 periodic=False):
+                 periodic=False,
+                 p_norm=2):
 
         # topology of the som
         super(SOM, self).__init__()
@@ -71,6 +73,7 @@ class SOM(nn.Module):
         self.periodic = periodic
 
         # optimization parameters
+        self.p_norm = p_norm
         self.sched = sched
         self.niter = niter
         if alpha is not None:
@@ -190,7 +193,7 @@ class SOM(nn.Module):
 
         # Compute distances from batch to centroids
         x, batch_size = self.find_batchsize(x)
-        dists = torch.cdist(x, self.centroids)
+        dists = torch.cdist(x, self.centroids, p=self.p_norm)
 
         # Find closest and retrieve the gaussian correlation matrix for each point in the batch
         # bmu_loc is BS, num points
@@ -239,7 +242,7 @@ class SOM(nn.Module):
         # Compute distances from batch to centroids
         # Dimension needed is BS, 1(vector), dim
         x, batch_size = self.find_batchsize(x)
-        dists = torch.cdist(x, self.centroids)
+        dists = torch.cdist(x, self.centroids, p=self.p_norm)
 
         # Find closest and retrieve the gaussian correlation matrix for each point in the batch
         # bmu_loc is BS, num points
