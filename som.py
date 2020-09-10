@@ -450,7 +450,7 @@ class SOM(nn.Module):
         #     for (u, v), (i, j) in self.reversed_mapping.items():
         #         square_label[i, j] = labels[u, v]
         #     return square_label
-
+        self.cluster_att = labels.flatten()
         return labels
 
     def predict_cluster(self, samples):
