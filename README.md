@@ -35,7 +35,7 @@ m, n = 100, 100
 dim = X.shape[1]
 niter = 5
 batch_size = 100
-som = SOM(m, n, dim, niter=niter, p_norm=1, device=device)
+som = SOM(m, n, dim, niter=niter, device=device)
 learning_error = som.fit(X, batch_size=batch_size)
 bmus, inference_error = som.predict(X, batch_size=batch_size)
 predicted_clusts, errors = som.predict_cluster(X)
