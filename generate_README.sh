@@ -47,20 +47,27 @@ One can also choose optimization parameters such as the number of epochs to trai
 EOF
 
 cat << EOF
-\`\`\`
-from quicksom import SOM
+\`\`\`python
+import pickle
+import numpy
+import torch
+from som import SOM
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
+X = numpy.load('contact_desc.npy')
 X = torch.from_numpy(X)
+X = X.float()
 X = X.to(device)
-m, n = 50, 50
+m, n = 100, 100
 dim = X.shape[1]
-n_iter = 5
-batch_size = 10
-som = SOM(m, n, dim, n_iter, device=device, periodic=True)
+niter = 5
+batch_size = 100
+som = SOM(m, n, dim, niter=niter, p_norm=1, device=device)
 learning_error = som.fit(X, batch_size=batch_size)
 bmus, inference_error = som.predict(X, batch_size=batch_size)
 predicted_clusts, errors = som.predict_cluster(X)
+som.to_device('cpu')
+pickle.dump(som, open('som.pickle', 'wb'))
 \`\`\`
 EOF
 
