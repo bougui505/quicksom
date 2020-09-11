@@ -50,12 +50,20 @@ class Wheel:
         self.clusters = numpy.zeros((self.som.m, self.som.n), dtype=int)
         self.cluster_current = numpy.zeros((self.som.m, self.som.n), dtype=bool)
         self.clusterplot = None  # To plot the current cluster
-        self.clustersplot = None  # To plot all the clusters
+        self.clustersplot = []  # To plot all the clusters
 
         self.local_min = peak_local_max(-self.som.uumat, min_distance=1)
         self.n_local_min = self.local_min.shape[0]
         self.local_min = numpy.asarray([self.som.reversed_mapping[(e[0], e[1])] for e in self.local_min])
         plt.scatter(self.local_min[:, 1], self.local_min[:, 0], c='g')
+
+    def plot_clusters(self):
+        for cplot in self.clustersplot:
+            clean_contours(cplot)
+        self.clustersplot = []
+        for cid in self.cluster_ids:
+            cplot = ax.contour(self.clusters == cid, levels=1, colors='r')
+            self.clustersplot.append(cplot)
 
     def __call__(self, event):
         if event.button is 'up':
@@ -72,14 +80,12 @@ class Wheel:
                 print(f"Creating cluster {cluster_id}")
                 self.clusters[self.cluster_current] = cluster_id
                 self.remap_clusters()
-                clean_contours(self.clustersplot)
-                self.clustersplot = ax.contour(self.clusters, levels=1, colors='r')
+                self.plot_clusters()
         if event.button == 3:  # Right mouse button pressed
             cluster_id = self.clusters[self.click.pos]
             if cluster_id > 0:
                 self.delete_cluster(cluster_id)
-                clean_contours(self.clustersplot)
-                self.clustersplot = ax.contour(self.clusters, levels=1, colors='r')
+                self.plot_clusters()
         self.threshold_display.set_text(self.display_str % self.threshold)
         self.cluster()
         plt.draw()
@@ -129,6 +135,18 @@ class Wheel:
         self.clusterplot = ax.contour(clusters, levels=1, colors='w')
         self.cluster_current = numpy.copy(clusters)
         self.pos = pos
+
+    def expand_clusters(self):
+        n_clusters = len(self.cluster_ids)
+        expanded_clusters = numpy.copy((self.clusters)).flatten()
+        if n_clusters > 1:
+            voidcells = numpy.where((self.clusters == 0).flatten())[0]
+            for cell in voidcells:
+                neighbors = self.som.all_to_all_dist[cell].argsort()
+                neighbor_clusters = self.clusters.flatten()[neighbors]
+                cluster_assigned = neighbor_clusters[neighbor_clusters > 0][0]
+                expanded_clusters[cell] = cluster_assigned
+        self.clusters = expanded_clusters.reshape((self.som.m, self.som.n))
 
 
 def format_coord(x, y):
