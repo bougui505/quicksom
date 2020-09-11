@@ -429,6 +429,7 @@ class SOM(nn.Module):
         # adj = adj.tocsr()
         # all_to_all_dist =  graph.shortest_path(adj, directed=False)
         all_to_all_dist = graph.shortest_path(mstree, directed=False)
+        self.all_to_all_dist = all_to_all_dist
         clusterer = AgglomerativeClustering(affinity='precomputed', linkage='average', n_clusters=n_local_min)
         labels = clusterer.fit_predict(all_to_all_dist)
         labels = labels.reshape((self.m, self.n))
