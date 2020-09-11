@@ -67,7 +67,7 @@ class Wheel:
         dists = self.som.all_to_all_dist[ind][numpy.ravel_multi_index(self.local_min.T, (self.som.m, self.som.n))]
         pos = tuple(self.local_min[numpy.argmin(dists)])
         if self.pos != pos:
-            self.threshold = 0.
+            self.threshold = self.som.umat[pos]
         uclusters = self.som.uumat < self.threshold
         label, num_features = scipy.ndimage.label(uclusters)
         label_id = label[self.som.mapping[pos]]
