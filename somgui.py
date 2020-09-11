@@ -31,6 +31,12 @@ class Click:
         self.clickpos.figure.canvas.draw()
 
 
+def clean_contours(contourplot):
+    if contourplot is not None:
+        for coll in contourplot.collections:
+            coll.remove()
+
+
 class Wheel:
     def __init__(self, som, click):
         self.threshold = 0
@@ -41,7 +47,10 @@ class Wheel:
         self.som = som
         self.click = click
         self.pos = self.click.pos
-        self.clusterplot = None
+        self.clusters = numpy.zeros((self.som.m, self.som.n), dtype=int)
+        self.cluster_current = numpy.zeros((self.som.m, self.som.n), dtype=bool)
+        self.clusterplot = None  # To plot the current cluster
+        self.clustersplot = None  # To plot all the clusters
 
         self.local_min = peak_local_max(-self.som.uumat, min_distance=1)
         self.n_local_min = self.local_min.shape[0]
@@ -57,9 +66,46 @@ class Wheel:
             self.threshold -= self.precision
             if self.threshold < 0.:
                 self.threshold = 0.
+        if event.button == 1:  # Left mouse button pressed
+            if self.is_cluster:
+                cluster_id = self.clusters.max() + 1
+                print(f"Creating cluster {cluster_id}")
+                self.clusters[self.cluster_current] = cluster_id
+                self.remap_clusters()
+                clean_contours(self.clustersplot)
+                self.clustersplot = ax.contour(self.clusters, levels=1, colors='r')
+        if event.button == 3:  # Right mouse button pressed
+            cluster_id = self.clusters[self.click.pos]
+            if cluster_id > 0:
+                self.delete_cluster(cluster_id)
+                clean_contours(self.clustersplot)
+                self.clustersplot = ax.contour(self.clusters, levels=1, colors='r')
         self.threshold_display.set_text(self.display_str % self.threshold)
         self.cluster()
         plt.draw()
+
+    @property
+    def is_cluster(self):
+        return self.cluster_current[self.click.pos]
+
+    def delete_cluster(self, cluster_id):
+        print(f"Deleting cluster {cluster_id}")
+        self.clusters[self.clusters == cluster_id] = 0
+        self.remap_clusters()
+
+    @property
+    def cluster_ids(self):
+        cluster_ids = numpy.unique(self.clusters)
+        cluster_ids = cluster_ids[cluster_ids > 0]
+        return cluster_ids
+
+    def remap_clusters(self):
+        remap = numpy.zeros_like(self.clusters)
+        for i, cid in enumerate(self.cluster_ids):
+            sel = (self.clusters == cid)
+            remap[sel] = i + 1
+        self.clusters = remap
+        print(f'Clusters: {numpy.unique(self.cluster_ids)}')
 
     def cluster(self):
         pos = self.click.pos
@@ -67,11 +113,11 @@ class Wheel:
         dists = self.som.all_to_all_dist[ind][numpy.ravel_multi_index(self.local_min.T, (self.som.m, self.som.n))]
         pos = tuple(self.local_min[numpy.argmin(dists)])
         if self.pos != pos:
-            self.threshold = self.som.umat[pos]
+            self.threshold = self.som.umat[pos] + 10. * self.precision
         uclusters = self.som.uumat < self.threshold
         label, num_features = scipy.ndimage.label(uclusters)
         label_id = label[self.som.mapping[pos]]
-        clusters = numpy.zeros_like(self.som.umat)
+        clusters = numpy.zeros_like(self.som.umat, dtype=bool)
         if label_id > 0:
             zone = (label == label_id)
             uclusters = zone
@@ -79,10 +125,9 @@ class Wheel:
                 for j in range(self.som.n):
                     u, v = self.som.mapping[(i, j)]
                     clusters[i, j] = uclusters[u, v]
-        if self.clusterplot is not None:
-            for coll in self.clusterplot.collections:
-                coll.remove()
+        clean_contours(self.clusterplot)
         self.clusterplot = ax.contour(clusters, levels=1, colors='w')
+        self.cluster_current = numpy.copy(clusters)
         self.pos = pos
 
 
@@ -106,4 +151,5 @@ if __name__ == '__main__':
     fig.canvas.mpl_connect('button_press_event', click)
     wheel = Wheel(som, click)
     fig.canvas.mpl_connect('scroll_event', wheel)
+    fig.canvas.mpl_connect('button_press_event', wheel)
     plt.show()
