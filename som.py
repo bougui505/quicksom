@@ -416,6 +416,10 @@ class SOM(nn.Module):
             self.mapping = mapping
             self.reversed_mapping = {v: k for k, v in self.mapping.items()}
             umat = uumat
+        else:
+            self.mapping = {(i, j): (i, j) for (i, j) in itertools.product(range(50), range(50))}
+            self.reversed_mapping = {v: k for k, v in self.mapping.items()}
+            self.uumat = umat
 
         local_min = peak_local_max(-self.umat, min_distance=min_distance)
         n_local_min = local_min.shape[0]
