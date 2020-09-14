@@ -113,6 +113,7 @@ class SOM(nn.Module):
 
         # Clustering parameters
         self.cluster_att = None
+        self.clusters_user = None
 
     def to_device(self, device):
         for k, v in vars(self).items():
@@ -274,6 +275,7 @@ class SOM(nn.Module):
                           f'| error: {error:4f} | time {time.perf_counter() - start:4f}')
                 step += 1
         self.compute_umat()
+        self.compute_all_dists()
         return learning_error
 
     def predict(self, samples, batch_size=100):
@@ -415,6 +417,13 @@ class SOM(nn.Module):
             self.reversed_mapping = {v: k for k, v in self.mapping.items()}
             self.uumat = umat
 
+    def compute_all_dists(self):
+        # GRAPH-BASED
+        mstree = graph.minimum_spanning_tree(self.adj)
+        # adj = adj.tocsr()
+        # all_to_all_dist =  graph.shortest_path(adj, directed=False)
+        self.all_to_all_dist = graph.shortest_path(mstree, directed=False)
+
     def cluster(self, min_distance=2):
         """
         Perform clustering based on the umatrix.
@@ -427,15 +436,8 @@ class SOM(nn.Module):
 
         local_min = peak_local_max(-self.umat, min_distance=min_distance)
         n_local_min = local_min.shape[0]
-
-        # GRAPH-BASED
-        mstree = graph.minimum_spanning_tree(self.adj)
-        # adj = adj.tocsr()
-        # all_to_all_dist =  graph.shortest_path(adj, directed=False)
-        all_to_all_dist = graph.shortest_path(mstree, directed=False)
-        self.all_to_all_dist = all_to_all_dist
         clusterer = AgglomerativeClustering(affinity='precomputed', linkage='average', n_clusters=n_local_min)
-        labels = clusterer.fit_predict(all_to_all_dist)
+        labels = clusterer.fit_predict(self.all_to_all_dist)
         labels = labels.reshape((self.m, self.n))
 
         # IMAGE-BASED
@@ -463,20 +465,25 @@ class SOM(nn.Module):
         return labels
 
     def manual_cluster(self):
-        from .somgui import Wheel, Click, format_coord
+        from .somgui import Wheel, Click
 
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=(8, 10))
         cax = ax.matshow(self.umat)
         fig.colorbar(cax)
 
-        click = Click()
+        click = Click(ax=ax)
         fig.canvas.mpl_connect('button_press_event', click)
-        wheel = Wheel(self, click)
+        wheel = Wheel(self, click, ax=ax)
+
+        if self.clusters_user is not None:
+            wheel.clusters = self.clusters_user
+            wheel.plot_clusters()
         fig.canvas.mpl_connect('scroll_event', wheel)
         fig.canvas.mpl_connect('button_press_event', wheel)
-        ax.format_coord = format_coord
+        ax.format_coord = wheel.format_coord
         plt.show()
         self.cluster_att = wheel.expanded_clusters.flatten()
+        self.clusters_user = wheel.clusters
 
     def predict_cluster(self, samples=None):
         """
@@ -487,9 +494,9 @@ class SOM(nn.Module):
             cluster_att = self.cluster()
             self.cluster_att = cluster_att.flatten()
         if samples is None:
-            try :
+            try:
                 self.bmus
-            except :
+            except:
                 print('No existing BMUs in the SOM object, one needs data points to predict clusters on')
         else:
             bmus, error = self.predict(samples)

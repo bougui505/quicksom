@@ -15,7 +15,8 @@ from skimage.feature import peak_local_max
 
 
 class Click:
-    def __init__(self):
+    def __init__(self, ax):
+        self.ax=ax
         self.pos = (0, 0)
         self.clickpos, = ax.plot(self.pos[1], self.pos[0], c='r', marker='s')
 
@@ -33,14 +34,15 @@ def clean_contours(contourplot):
 
 
 class Wheel:
-    def __init__(self, som, click):
+    def __init__(self, som, click, ax):
+        self.ax=ax
         self.threshold = 0
         self.precision = .01
         self.display_str = 'Threshold=%.3f'
         help_string = "\n\n- Left-Click: Set position\n- Scroll: Set basin threshold\n- Shift-Scroll: Set basin threshold with higher precision\n- Left-Click on basin: Set the current basin as a cluster\n- Right-Click on cluster: Delete the selected cluster\n- Double-Click on cluster: Expand the clusters\n- Left-Click on cluster: Come back to user cluster view"
         self.display_str += help_string
-        self.threshold_display = ax.text(0.5, -0.1, self.display_str % self.threshold,
-                                         ha="center", va='top', transform=ax.transAxes)
+        self.threshold_display = self.ax.text(0.5, -0.1, self.display_str % self.threshold,
+                                              ha="center", va='top', transform=self.ax.transAxes)
         self.som = som
         self.click = click
         self.pos = self.click.pos
@@ -48,7 +50,7 @@ class Wheel:
         self.expanded_clusters = numpy.zeros((self.som.m, self.som.n), dtype=int)
         self.cluster_current = numpy.zeros((self.som.m, self.som.n), dtype=bool)
         self.clusterplot = None  # To plot the current cluster
-        self.clustersplot = ax.scatter(0, 0, c='r', marker='s', alpha=0.)  # To plot all the clusters
+        self.clustersplot = self.ax.scatter(0, 0, c='r', marker='s', alpha=0.)  # To plot all the clusters
 
         self.local_min = peak_local_max(-self.som.uumat, min_distance=1)
         self.n_local_min = self.local_min.shape[0]
@@ -63,7 +65,7 @@ class Wheel:
         contours = numpy.linalg.norm(gradients, axis=0)
         contours = numpy.where(contours > 0)
         self.clustersplot.remove()
-        self.clustersplot = ax.scatter(contours[1], contours[0], marker='s', color='r', alpha=.75, s=6.)
+        self.clustersplot = self.ax.scatter(contours[1], contours[0], marker='s', color='r', alpha=.75, s=6.)
         self.clustersplot.figure.canvas.draw()
 
     def __call__(self, event):
@@ -141,7 +143,7 @@ class Wheel:
                     u, v = self.som.mapping[(i, j)]
                     clusters[i, j] = uclusters[u, v]
         clean_contours(self.clusterplot)
-        self.clusterplot = ax.contour(clusters, levels=1, colors='w')
+        self.clusterplot = self.ax.contour(clusters, levels=1, colors='w')
         self.cluster_current = numpy.copy(clusters)
         self.pos = pos
 
@@ -158,8 +160,8 @@ class Wheel:
         self.expanded_clusters = expanded_clusters.reshape((self.som.m, self.som.n))
 
 
-def format_coord(x, y):
-    return f'i={int(y)}, j={int(x)}, cluster {wheel.expanded_clusters[int(y), int(x)]}'
+    def format_coord(self, x, y):
+        return f'i={int(y)}, j={int(x)}, cluster {self.expanded_clusters[int(y), int(x)]}'
 
 
 if __name__ == '__main__':
@@ -177,15 +179,15 @@ if __name__ == '__main__':
     cax = ax.matshow(som.umat)
     fig.colorbar(cax)
 
-    click = Click()
+    click = Click(ax=ax)
     fig.canvas.mpl_connect('button_press_event', click)
-    wheel = Wheel(som, click)
+    wheel = Wheel(som, click, ax=ax)
     if hasattr(som, 'clusters_user'):
         wheel.clusters = som.clusters_user
         wheel.plot_clusters()
     fig.canvas.mpl_connect('scroll_event', wheel)
     fig.canvas.mpl_connect('button_press_event', wheel)
-    ax.format_coord = format_coord
+    ax.format_coord = wheel.format_coord
     plt.show()
     som.cluster_att = wheel.expanded_clusters.flatten()
     som.clusters_user = wheel.clusters
