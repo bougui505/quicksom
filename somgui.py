@@ -88,9 +88,9 @@ class Wheel:
                 self.clusters[self.cluster_current] = cluster_id
                 self.remap_clusters()
                 self.expand_clusters()
-                self.plot_clusters()
-                if event.dblclick:
-                    self.plot_clusters(plot_expanded=True)
+            self.plot_clusters()
+            if event.dblclick:
+                self.plot_clusters(plot_expanded=True)
         if event.button == 3:  # Right mouse button pressed
             cluster_id = self.clusters[self.click.pos]
             if cluster_id > 0:
