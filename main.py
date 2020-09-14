@@ -10,7 +10,7 @@ import torch
 import pickle
 import matplotlib.pyplot as plt
 import numpy as np
-import som
+from quicksom.som import SOM
 
 from sklearn.datasets import make_moons
 
@@ -25,7 +25,7 @@ except FileExistsError:
     pass
 
 # BUILD DATASET if does not exist yet or too short for the required number of points
-max_points = 10000
+max_points = 100
 create_data = False
 if os.path.exists('data/moons.txt'):
     X = np.genfromtxt('data/moons.txt')
@@ -54,7 +54,7 @@ if not os.path.exists('out/trained.p'):
     dim = X.shape[1]
     niter = 100
     batch_size = 100
-    som = som.SOM(m, n, dim, niter=niter, device=device)
+    som = SOM(m, n, dim, niter=niter, device=device)
     learning_error = som.fit(X, batch_size=batch_size)
     bmus, inference_error = som.predict(X, batch_size=batch_size)
 else:

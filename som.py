@@ -419,10 +419,10 @@ class SOM(nn.Module):
 
     def compute_all_dists(self):
         # GRAPH-BASED
-        mstree = graph.minimum_spanning_tree(self.adj)
-        # adj = adj.tocsr()
-        # all_to_all_dist =  graph.shortest_path(adj, directed=False)
-        self.all_to_all_dist = graph.shortest_path(mstree, directed=False)
+        # mstree = graph.minimum_spanning_tree(self.adj)
+        adj = self.adj.tocsr()
+        self.all_to_all_dist = graph.shortest_path(adj, directed=False)
+        # self.all_to_all_dist = graph.shortest_path(mstree, directed=False)
 
     def cluster(self, min_distance=2):
         """

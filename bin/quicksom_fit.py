@@ -4,27 +4,22 @@ import pickle
 import numpy
 import torch
 
-import os
-import sys
-script_dir = os.path.dirname(os.path.realpath(__file__))
-sys.path.append(os.path.join(script_dir, '..'))
-
-from quicksom import SOM
+from quicksom.som import SOM
 
 import argparse
 
 parser = argparse.ArgumentParser()
 # In/Out
-parser.add_argument("-in_name", "--in_name", default='x.npy', help="name of the .txt to use")
-parser.add_argument("-out_name", "--out_name", default='som.p', help="name of pickle to dump")
+parser.add_argument("-i", "--in_name", required=True, help="name of the .txt to use")
+parser.add_argument("-o", "--out_name", default='som.p', help="name of pickle to dump")
 # SOM
 parser.add_argument("-m", "--m", type=int, default=50, help="The width of the som")
 parser.add_argument("-n", "--n", type=int, default=50, help="The height of the som")
 parser.add_argument("--norm", type=int, default=2, help="The p norm to use")
 parser.add_argument("--periodic", default=False, action='store_true', help="if set, periodic topology is used")
 # Optim
-parser.add_argument("--n_iter", type=int, default=10, help="The number of iterations")
-parser.add_argument("--batch_size", type=int, default=1000, help="The batch size to use")
+parser.add_argument("--n_iter", type=int, default=30, help="The number of iterations")
+parser.add_argument("--batch_size", type=int, default=100, help="The batch size to use")
 parser.add_argument("--alpha", type=float, default=None, help="The initial learning rate")
 parser.add_argument("--sigma", type=float, default=None, help="The initial sigma for the convolution")
 parser.add_argument("--scheduler", default='linear', help="Which scheduler to use, can be linear, exp or half")

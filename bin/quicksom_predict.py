@@ -3,21 +3,15 @@
 import pickle
 import numpy
 import torch
-
-import os
-import sys
-script_dir = os.path.dirname(os.path.realpath(__file__))
-sys.path.append(os.path.join(script_dir, '..'))
-
-from quicksom import SOM
+from quicksom.som import SOM
 
 import argparse
 
 parser = argparse.ArgumentParser()
 # In/Out
-parser.add_argument("-in_name", "--in_name", default=None, help="name of the txt to use")
-parser.add_argument("-out_name", "--out_name", default='out.npy', help="name of npy to dump")
-parser.add_argument("-som_name", "--som_name", default='som.p', help="name of pickle to load")
+parser.add_argument("-i", "--in_name", default=None, help="name of the txt to use")
+parser.add_argument("-o", "--out_name", default='out.txt', help="name of txt to dump")
+parser.add_argument("-s", "--som_name", default='som.p', help="name of pickle to load")
 parser.add_argument("--recompute_cluster", default=False, action='store_true', help="if set, periodic topology is used")
 args, _ = parser.parse_known_args()
 
@@ -37,4 +31,4 @@ if args.in_name is not None:
 else:
     predicted_clusts, errors = som.predict_cluster()
 
-numpy.save(args.out_name, predicted_clusts)
+numpy.savetxt(args.out_name, predicted_clusts, fmt='%d')

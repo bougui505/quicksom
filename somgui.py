@@ -165,6 +165,7 @@ class Wheel:
 
 
 if __name__ == '__main__':
+    from quicksom.som import SOM
     parser = argparse.ArgumentParser(description='SOM Graphical User Interface')
     parser.add_argument('--som', type=str, help='SOM pickle object file',
                         required=True)
@@ -182,7 +183,7 @@ if __name__ == '__main__':
     click = Click(ax=ax)
     fig.canvas.mpl_connect('button_press_event', click)
     wheel = Wheel(som, click, ax=ax)
-    if hasattr(som, 'clusters_user'):
+    if som.clusters_user is not None:
         wheel.clusters = som.clusters_user
         wheel.plot_clusters()
     fig.canvas.mpl_connect('scroll_event', wheel)
