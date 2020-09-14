@@ -50,7 +50,7 @@ class Wheel:
         self.clusters = numpy.zeros((self.som.m, self.som.n), dtype=int)
         self.cluster_current = numpy.zeros((self.som.m, self.som.n), dtype=bool)
         self.clusterplot = None  # To plot the current cluster
-        self.clustersplot = []  # To plot all the clusters
+        self.clustersplot = ax.scatter(0, 0, c='r', marker='s', alpha=0.)  # To plot all the clusters
 
         self.local_min = peak_local_max(-self.som.uumat, min_distance=1)
         self.n_local_min = self.local_min.shape[0]
@@ -58,12 +58,12 @@ class Wheel:
         plt.scatter(self.local_min[:, 1], self.local_min[:, 0], c='g')
 
     def plot_clusters(self):
-        for cplot in self.clustersplot:
-            clean_contours(cplot)
-        self.clustersplot = []
-        for cid in self.cluster_ids:
-            cplot = ax.contour(self.clusters == cid, levels=1, colors='r')
-            self.clustersplot.append(cplot)
+        gradients = numpy.asarray(numpy.gradient(self.clusters))
+        contours = numpy.linalg.norm(gradients, axis=0)
+        contours = numpy.where(contours > 0)
+        self.clustersplot.remove()
+        self.clustersplot = ax.scatter(contours[1], contours[0], marker='s', color='r', alpha=.75, s=1.5)
+        self.clustersplot.figure.canvas.draw()
 
     def __call__(self, event):
         if event.key is 'shift':
