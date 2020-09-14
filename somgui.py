@@ -41,7 +41,7 @@ class Wheel:
     def __init__(self, som, click):
         self.threshold = 0
         self.precision = .01
-        self.display_str = 'Threshold=%.2f'
+        self.display_str = 'Threshold=%.3f'
         self.threshold_display = ax.text(0.5, -0.1, self.display_str % self.threshold,
                                          ha="center", transform=ax.transAxes)
         self.som = som
@@ -66,6 +66,10 @@ class Wheel:
             self.clustersplot.append(cplot)
 
     def __call__(self, event):
+        if event.key is 'shift':
+            self.precision = 0.001
+        else:
+            self.precision = 0.01
         if event.button is 'up':
             self.threshold += self.precision
             if self.threshold > 1.:
