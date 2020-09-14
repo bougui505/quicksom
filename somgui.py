@@ -48,6 +48,7 @@ class Wheel:
         self.click = click
         self.pos = self.click.pos
         self.clusters = numpy.zeros((self.som.m, self.som.n), dtype=int)
+        self.expanded_clusters = numpy.zeros((self.som.m, self.som.n), dtype=int)
         self.cluster_current = numpy.zeros((self.som.m, self.som.n), dtype=bool)
         self.clusterplot = None  # To plot the current cluster
         self.clustersplot = ax.scatter(0, 0, c='r', marker='s', alpha=0.)  # To plot all the clusters
@@ -58,7 +59,7 @@ class Wheel:
         plt.scatter(self.local_min[:, 1], self.local_min[:, 0], c='g')
 
     def plot_clusters(self):
-        gradients = numpy.asarray(numpy.gradient(self.clusters))
+        gradients = numpy.asarray(numpy.gradient(self.expanded_clusters))
         contours = numpy.linalg.norm(gradients, axis=0)
         contours = numpy.where(contours > 0)
         self.clustersplot.remove()
@@ -84,11 +85,13 @@ class Wheel:
                 print(f"Creating cluster {cluster_id}")
                 self.clusters[self.cluster_current] = cluster_id
                 self.remap_clusters()
+                self.expand_clusters()
                 self.plot_clusters()
         if event.button == 3:  # Right mouse button pressed
             cluster_id = self.clusters[self.click.pos]
             if cluster_id > 0:
                 self.delete_cluster(cluster_id)
+                self.expand_clusters()
                 self.plot_clusters()
         self.threshold_display.set_text(self.display_str % self.threshold)
         self.cluster()
@@ -150,11 +153,11 @@ class Wheel:
                 neighbor_clusters = self.clusters.flatten()[neighbors]
                 cluster_assigned = neighbor_clusters[neighbor_clusters > 0][0]
                 expanded_clusters[cell] = cluster_assigned
-        self.clusters = expanded_clusters.reshape((self.som.m, self.som.n))
+        self.expanded_clusters = expanded_clusters.reshape((self.som.m, self.som.n))
 
 
 def format_coord(x, y):
-    return f'i={int(y)}, j={int(x)}'
+    return f'i={int(y)}, j={int(x)}, cluster {wheel.expanded_clusters[int(y), int(x)]}'
 
 
 if __name__ == '__main__':
@@ -165,7 +168,6 @@ if __name__ == '__main__':
     som.cluster()
 
     fig, ax = plt.subplots()
-    ax.format_coord = format_coord
     cax = ax.matshow(som.umat)
     fig.colorbar(cax)
 
@@ -174,4 +176,5 @@ if __name__ == '__main__':
     wheel = Wheel(som, click)
     fig.canvas.mpl_connect('scroll_event', wheel)
     fig.canvas.mpl_connect('button_press_event', wheel)
+    ax.format_coord = format_coord
     plt.show()
