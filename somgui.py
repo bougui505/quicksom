@@ -13,11 +13,6 @@ import torch
 import matplotlib.pyplot as plt
 from skimage.feature import peak_local_max
 
-parser = argparse.ArgumentParser(description='SOM Graphical User Interface')
-parser.add_argument('--som', type=str, help='SOM pickle object file',
-                    required=True)
-args = parser.parse_args()
-
 
 class Click:
     def __init__(self):
@@ -162,6 +157,10 @@ def format_coord(x, y):
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='SOM Graphical User Interface')
+    parser.add_argument('--som', type=str, help='SOM pickle object file',
+                        required=True)
+    args = parser.parse_args()
     sompickle = args.som
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     som = pickle.load(open(sompickle, 'rb'))
@@ -179,3 +178,6 @@ if __name__ == '__main__':
     fig.canvas.mpl_connect('button_press_event', wheel)
     ax.format_coord = format_coord
     plt.show()
+    som.cluster_att = wheel.expanded_clusters.flatten()
+    som.to_device('cpu')
+    pickle.dump(som, open(sompickle, 'wb'))

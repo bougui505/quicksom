@@ -120,9 +120,10 @@ class SOM(nn.Module):
             try:
                 var = var.to(device)
                 self.__dict__[k] = var
-                print(f'{k} -> {device}')
+                # print(f'{k} -> {device}')
             except AttributeError:
-                print(f'{k} ... {device}')
+                pass
+                # print(f'{k} ... {device}')
         return self
 
     def get_bmu_distance_squares(self, bmu_loc):
