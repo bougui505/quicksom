@@ -21,7 +21,7 @@ class Click:
 
     def __call__(self, event):
         self.pos = int(event.ydata), int(event.xdata)
-        print(f'i={self.pos[0]}; j={self.pos[1]}')
+        # print(f'i={self.pos[0]}; j={self.pos[1]}')
         self.clickpos.set_data(self.pos[1], self.pos[0])
         self.clickpos.figure.canvas.draw()
 
@@ -37,8 +37,10 @@ class Wheel:
         self.threshold = 0
         self.precision = .01
         self.display_str = 'Threshold=%.3f'
+        help_string = "\n\n- Left-Click: Set position\n- Scroll: Set basin threshold\n- Shift-Scroll: Set basin threshold with higher precision\n- Left-Click on basin: Set the current basin as a cluster\n- Right-Click on cluster: Delete the selected cluster\n- Double-Click on cluster: Expand the clusters\n- Left-Click on cluster: Come back to user cluster view"
+        self.display_str += help_string
         self.threshold_display = ax.text(0.5, -0.1, self.display_str % self.threshold,
-                                         ha="center", transform=ax.transAxes)
+                                         ha="center", va='top', transform=ax.transAxes)
         self.som = som
         self.click = click
         self.pos = self.click.pos
@@ -53,13 +55,15 @@ class Wheel:
         self.local_min = numpy.asarray([self.som.reversed_mapping[(e[0], e[1])] for e in self.local_min])
         plt.scatter(self.local_min[:, 1], self.local_min[:, 0], c='g')
 
-    def plot_clusters(self):
-        # gradients = numpy.asarray(numpy.gradient(self.expanded_clusters))
-        gradients = numpy.asarray(numpy.gradient(self.clusters))
+    def plot_clusters(self, plot_expanded=False):
+        if plot_expanded:
+            gradients = numpy.asarray(numpy.gradient(self.expanded_clusters))
+        else:
+            gradients = numpy.asarray(numpy.gradient(self.clusters))
         contours = numpy.linalg.norm(gradients, axis=0)
         contours = numpy.where(contours > 0)
         self.clustersplot.remove()
-        self.clustersplot = ax.scatter(contours[1], contours[0], marker='s', color='r', alpha=.75, s=1.5)
+        self.clustersplot = ax.scatter(contours[1], contours[0], marker='s', color='r', alpha=.75, s=6.)
         self.clustersplot.figure.canvas.draw()
 
     def __call__(self, event):
@@ -78,11 +82,13 @@ class Wheel:
         if event.button == 1:  # Left mouse button pressed
             if self.is_cluster:
                 cluster_id = self.clusters.max() + 1
-                print(f"Creating cluster {cluster_id}")
+                # print(f"Creating cluster {cluster_id}")
                 self.clusters[self.cluster_current] = cluster_id
                 self.remap_clusters()
                 self.expand_clusters()
                 self.plot_clusters()
+                if event.dblclick:
+                    self.plot_clusters(plot_expanded=True)
         if event.button == 3:  # Right mouse button pressed
             cluster_id = self.clusters[self.click.pos]
             if cluster_id > 0:
@@ -98,7 +104,7 @@ class Wheel:
         return self.cluster_current[self.click.pos]
 
     def delete_cluster(self, cluster_id):
-        print(f"Deleting cluster {cluster_id}")
+        # print(f"Deleting cluster {cluster_id}")
         self.clusters[self.clusters == cluster_id] = 0
         self.remap_clusters()
 
@@ -122,7 +128,7 @@ class Wheel:
         dists = self.som.all_to_all_dist[ind][numpy.ravel_multi_index(self.local_min.T, (self.som.m, self.som.n))]
         pos = tuple(self.local_min[numpy.argmin(dists)])
         if self.pos != pos:
-            self.threshold = self.som.umat[pos] + 10. * self.precision
+            self.threshold = self.som.umat[pos]
         uclusters = self.som.uumat < self.threshold
         label, num_features = scipy.ndimage.label(uclusters)
         label_id = label[self.som.mapping[pos]]
@@ -165,19 +171,23 @@ if __name__ == '__main__':
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     som = pickle.load(open(sompickle, 'rb'))
     som.to_device(device)
-    som.cluster()
+    # som.cluster()
 
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(8, 10))
     cax = ax.matshow(som.umat)
     fig.colorbar(cax)
 
     click = Click()
     fig.canvas.mpl_connect('button_press_event', click)
     wheel = Wheel(som, click)
+    if hasattr(som, 'clusters_user'):
+        wheel.clusters = som.clusters_user
+        wheel.plot_clusters()
     fig.canvas.mpl_connect('scroll_event', wheel)
     fig.canvas.mpl_connect('button_press_event', wheel)
     ax.format_coord = format_coord
     plt.show()
     som.cluster_att = wheel.expanded_clusters.flatten()
+    som.clusters_user = wheel.clusters
     som.to_device('cpu')
     pickle.dump(som, open(sompickle, 'wb'))
