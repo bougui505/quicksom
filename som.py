@@ -272,6 +272,7 @@ class SOM(nn.Module):
                           f'| alpha: {self.alpha_op:4f} | sigma: {self.sigma_op:4f} '
                           f'| error: {error:4f} | time {time.perf_counter() - start:4f}')
                 step += 1
+        self.compute_umat()
         return learning_error
 
     def predict(self, samples, batch_size=100):
@@ -295,7 +296,7 @@ class SOM(nn.Module):
         return bmus, errors
 
     @staticmethod
-    def unfold(umat, adj):
+    def _unfold(umat, adj):
         """
         - umat: U-matrix
         - adj: Adjacency matrix of the corresponding U-matrix
@@ -329,7 +330,7 @@ class SOM(nn.Module):
         return uumat, mapping
 
     @staticmethod
-    def get_umat(smap, shape=None, rmsd=False, return_adjacency=False, periodic=True):
+    def _get_umat(smap, shape=None, rmsd=False, return_adjacency=False, periodic=True):
         """
         Compute the U-matrix based on a map of centroids and their connectivity.
         """
@@ -395,23 +396,15 @@ class SOM(nn.Module):
         else:
             return umatrix
 
-    def cluster(self, min_distance=2):
-        """
-        Perform clustering based on the umatrix.
-
-        We have tried several methods that can be put into two main categories :
-        Graph-based : using either a minimum spanning tree of the full connectivity
-        Image-based : using the U-matrix and segmentation techniques. In the periodic case,
-                        an unfolding of the umatrix was necessary to do so.
-        """
+    def compute_umat(self):
         smap = self.centroids.cpu().numpy().reshape((self.m, self.n, -1))
-        umat, adj = self.get_umat(smap, shape=(self.m, self.n), return_adjacency=True, periodic=self.periodic)
+        umat, adj = self._get_umat(smap, shape=(self.m, self.n), return_adjacency=True, periodic=self.periodic)
         # Renormalize
         umat = (umat - np.min(umat)) / (np.max(umat) - np.min(umat))
         self.umat = umat
         self.adj = adj
         if self.periodic:
-            uumat, mapping = self.unfold(umat, adj)
+            uumat, mapping = self._unfold(umat, adj)
             self.uumat = uumat
             self.mapping = mapping
             self.reversed_mapping = {v: k for k, v in self.mapping.items()}
@@ -421,11 +414,21 @@ class SOM(nn.Module):
             self.reversed_mapping = {v: k for k, v in self.mapping.items()}
             self.uumat = umat
 
+    def cluster(self, min_distance=2):
+        """
+        Perform clustering based on the umatrix.
+
+        We have tried several methods that can be put into two main categories :
+        Graph-based : using either a minimum spanning tree of the full connectivity
+        Image-based : using the U-matrix and segmentation techniques. In the periodic case,
+                        an unfolding of the umatrix was necessary to do so.
+        """
+
         local_min = peak_local_max(-self.umat, min_distance=min_distance)
         n_local_min = local_min.shape[0]
 
         # GRAPH-BASED
-        mstree = graph.minimum_spanning_tree(adj)
+        mstree = graph.minimum_spanning_tree(self.adj)
         # adj = adj.tocsr()
         # all_to_all_dist =  graph.shortest_path(adj, directed=False)
         all_to_all_dist = graph.shortest_path(mstree, directed=False)
@@ -458,7 +461,23 @@ class SOM(nn.Module):
         self.cluster_att = labels.flatten()
         return labels
 
-    def predict_cluster(self, samples):
+    def manual_cluster(self):
+        from .somgui import Wheel, Click, format_coord
+
+        fig, ax = plt.subplots()
+        cax = ax.matshow(self.umat)
+        fig.colorbar(cax)
+
+        click = Click()
+        fig.canvas.mpl_connect('button_press_event', click)
+        wheel = Wheel(self, click)
+        fig.canvas.mpl_connect('scroll_event', wheel)
+        fig.canvas.mpl_connect('button_press_event', wheel)
+        ax.format_coord = format_coord
+        plt.show()
+        self.cluster_att = wheel.expanded_clusters.flatten()
+
+    def predict_cluster(self, samples=None):
         """
         we have a mapping from each unit to its cluster in the flattened form in self.cluster_att
         Then we need to turn the bmu attributions into the index in this list and return the cluster attributions
@@ -466,8 +485,15 @@ class SOM(nn.Module):
         if self.cluster_att is None:
             cluster_att = self.cluster()
             self.cluster_att = cluster_att.flatten()
-        bmus, error = self.predict(samples)
-        flat_bmus = (bmus[:, 0] * self.n + bmus[:, 1]).astype(np.int32)
+        if samples is None:
+            try :
+                self.bmus
+            except :
+                print('No existing BMUs in the SOM object, one needs data points to predict clusters on')
+        else:
+            bmus, error = self.predict(samples)
+            self.bmus = bmus
+        flat_bmus = (self.bmus[:, 0] * self.n + self.bmus[:, 1]).astype(np.int32)
         return self.cluster_att[flat_bmus], error
 
 
