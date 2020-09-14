@@ -59,7 +59,8 @@ class Wheel:
         plt.scatter(self.local_min[:, 1], self.local_min[:, 0], c='g')
 
     def plot_clusters(self):
-        gradients = numpy.asarray(numpy.gradient(self.expanded_clusters))
+        # gradients = numpy.asarray(numpy.gradient(self.expanded_clusters))
+        gradients = numpy.asarray(numpy.gradient(self.clusters))
         contours = numpy.linalg.norm(gradients, axis=0)
         contours = numpy.where(contours > 0)
         self.clustersplot.remove()
