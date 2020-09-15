@@ -16,12 +16,13 @@ parser.add_argument("--recompute_cluster", default=False, action='store_true', h
 parser.add_argument("--batch", default=100, type=int, help='Batch size')
 args, _ = parser.parse_known_args()
 
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
 som = pickle.load(open(args.som_name, 'rb'))
+som.to_device(device)
 if args.recompute_cluster:
     som.cluster_att = None
 
 if args.in_name is not None:
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
     X = numpy.load(args.in_name)
     X = torch.from_numpy(X)
     X = X.float()
