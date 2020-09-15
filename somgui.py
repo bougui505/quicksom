@@ -16,7 +16,7 @@ from skimage.feature import peak_local_max
 
 class Click:
     def __init__(self, ax):
-        self.ax=ax
+        self.ax = ax
         self.pos = (0, 0)
         self.clickpos, = ax.plot(self.pos[1], self.pos[0], c='r', marker='s')
 
@@ -35,7 +35,7 @@ def clean_contours(contourplot):
 
 class Wheel:
     def __init__(self, som, click, ax):
-        self.ax=ax
+        self.ax = ax
         self.threshold = 0
         self.precision = .01
         self.display_str = 'Threshold=%.3f'
@@ -59,13 +59,12 @@ class Wheel:
 
     def plot_clusters(self, plot_expanded=False):
         if plot_expanded:
-            gradients = numpy.asarray(numpy.gradient(self.expanded_clusters))
+            to_plot = self.expanded_clusters
         else:
-            gradients = numpy.asarray(numpy.gradient(self.clusters))
-        contours = numpy.linalg.norm(gradients, axis=0)
-        contours = numpy.where(contours > 0)
+            to_plot = self.clusters
+        to_plot = numpy.ma.masked_array(data=to_plot, mask=(to_plot == 0))
         self.clustersplot.remove()
-        self.clustersplot = self.ax.scatter(contours[1], contours[0], marker='s', color='r', alpha=.75, s=6.)
+        self.clustersplot = self.ax.matshow(to_plot, cmap='tab20')
         self.clustersplot.figure.canvas.draw()
 
     def __call__(self, event):
@@ -82,7 +81,7 @@ class Wheel:
             if self.threshold < 0.:
                 self.threshold = 0.
         if event.button == 1:  # Left mouse button pressed
-            if self.is_cluster:
+            if self.clusters[self.click.pos] == 0:
                 cluster_id = self.clusters.max() + 1
                 # print(f"Creating cluster {cluster_id}")
                 self.clusters[self.cluster_current] = cluster_id
@@ -185,6 +184,7 @@ if __name__ == '__main__':
     wheel = Wheel(som, click, ax=ax)
     if som.clusters_user is not None:
         wheel.clusters = som.clusters_user
+        wheel.expand_clusters()
         wheel.plot_clusters()
     fig.canvas.mpl_connect('scroll_event', wheel)
     fig.canvas.mpl_connect('button_press_event', wheel)
