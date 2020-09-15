@@ -477,6 +477,7 @@ class SOM(nn.Module):
 
         if self.clusters_user is not None:
             wheel.clusters = self.clusters_user
+            wheel.expand_clusters()
             wheel.plot_clusters()
         fig.canvas.mpl_connect('scroll_event', wheel)
         fig.canvas.mpl_connect('button_press_event', wheel)

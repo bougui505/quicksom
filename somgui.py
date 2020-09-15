@@ -158,7 +158,6 @@ class Wheel:
                 expanded_clusters[cell] = cluster_assigned
         self.expanded_clusters = expanded_clusters.reshape((self.som.m, self.som.n))
 
-
     def format_coord(self, x, y):
         return f'i={int(y)}, j={int(x)}, cluster {self.expanded_clusters[int(y), int(x)]}'
 
