@@ -31,4 +31,8 @@ if args.in_name is not None:
 else:
     predicted_clusts, errors = som.predict_cluster()
 
-numpy.savetxt(args.out_name, predicted_clusts, fmt='%d')
+# numpy.savetxt(args.out_name, predicted_clusts, fmt='%d')
+with open(args.out_name, 'w') as outfile:
+    for cid in numpy.unique(predicted_clusts):
+        inds = numpy.where(predicted_clusts == cid)[0]
+        outfile.write(f"{' '.join(['%d' % e for e in inds])}\n")
