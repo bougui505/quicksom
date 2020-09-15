@@ -5,6 +5,7 @@
 # https://research.pasteur.fr/en/member/guillaume-bouvier/
 # 2020-07-02 15:02:22 (UTC+0200)
 
+import sys
 import torch
 import torch.nn as nn
 import time
@@ -290,6 +291,8 @@ class SOM(nn.Module):
         errors = list()
 
         for i in range(n_batch + 1):
+            sys.stdout.write(f'{i+1}/{n_batch+1}\r')
+            sys.stdout.flush()
             batch = samples[i * batch_size:i * batch_size + batch_size]
             bmu_loc, error = self.inference_call(batch)
             bmus[i * batch_size:i * batch_size + batch_size] = bmu_loc.cpu().numpy()
@@ -486,7 +489,7 @@ class SOM(nn.Module):
         self.cluster_att = wheel.expanded_clusters.flatten()
         self.clusters_user = wheel.clusters
 
-    def predict_cluster(self, samples=None):
+    def predict_cluster(self, samples=None, batch_size=100):
         """
         we have a mapping from each unit to its cluster in the flattened form in self.cluster_att
         Then we need to turn the bmu attributions into the index in this list and return the cluster attributions
@@ -500,7 +503,7 @@ class SOM(nn.Module):
             except:
                 print('No existing BMUs in the SOM object, one needs data points to predict clusters on')
         else:
-            bmus, error = self.predict(samples)
+            bmus, error = self.predict(samples, batch_size=batch_size)
             self.bmus = bmus
         flat_bmus = (self.bmus[:, 0] * self.n + self.bmus[:, 1]).astype(np.int32)
         return self.cluster_att[flat_bmus], error
