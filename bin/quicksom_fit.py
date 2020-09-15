@@ -10,7 +10,7 @@ import argparse
 
 parser = argparse.ArgumentParser()
 # In/Out
-parser.add_argument("-i", "--in_name", required=True, help="name of the .txt to use")
+parser.add_argument("-i", "--in_name", required=True, help="name of the .npy to use")
 parser.add_argument("-o", "--out_name", default='som.p', help="name of pickle to dump")
 # SOM
 parser.add_argument("-m", "--m", type=int, default=50, help="The width of the som")
@@ -27,7 +27,7 @@ args, _ = parser.parse_known_args()
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-X = numpy.genfromtxt(args.in_name)
+X = numpy.load(args.in_name)
 
 X = torch.from_numpy(X)
 X = X.float()
