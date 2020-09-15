@@ -24,26 +24,35 @@ It follows the scikit package semantics for training and usage of the model.
 EOF
 
 cat << EOF
-# Requirements
-The SOM object requires numpy, scipy and torch installed.
+#### Requirements and setup
+The SOM object requires torch installed.
 
-The graph-based clustering requires scikit-learn and the image-based clustering requires scikit-image. By default,
-we use the graph-based clustering
+It has dependencies in numpy, scipy and scikit-learn and scikit-image.
+The MD application requires pymol to load the trajectory that is not included in the dependencies
 
-The toy example uses scikit-learn for the toy dataset generation
-
-The MD application requires pymol for loading the trajectory
-
-Then one can run :
+To set up the project, install pytorch and run :
 \`\`\`
 pip install quicksom
 \`\`\`
 EOF
 
 cat << EOF
-# SOM object interface
+#### SOM object interface
 The SOM object can be created using any grid size, with a optional periodic topology.
 One can also choose optimization parameters such as the number of epochs to train or the batch size
+
+To use it, we include three scripts to fit a SOM, to optionally build
+the clusters manually with a gui and to predict cluster affectations
+for new data points
+
+\`\`\`bash
+quicksom_fit -h
+quicksom_gui -h
+quicksom_predict -h
+\`\`\`
+
+The SOM object is also importable from python scripts to use
+directly in your analysis pipelines.
 EOF
 
 cat << EOF
@@ -53,58 +62,33 @@ import numpy
 import torch
 from som import SOM
 
+# Get data
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 X = numpy.load('contact_desc.npy')
 X = torch.from_numpy(X)
 X = X.float()
 X = X.to(device)
+
+# Create SOM object and train it, then dump it as a pickle object
 m, n = 100, 100
 dim = X.shape[1]
 niter = 5
 batch_size = 100
 som = SOM(m, n, dim, niter=niter, device=device)
 learning_error = som.fit(X, batch_size=batch_size)
-bmus, inference_error = som.predict(X, batch_size=batch_size)
-predicted_clusts, errors = som.predict_cluster(X)
 som.to_device('cpu')
 pickle.dump(som, open('som.pickle', 'wb'))
-\`\`\`
-EOF
 
-cat << EOF
-Inference and analysis script sample:
-EOF
-
-cat << EOF
-\`\`\`python
-import pickle
-import numpy
-import torch
-
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
+# Usage on the input data, predicted_clusts is an array of length n_samples with clusters affectations
 som = pickle.load(open('som.pickle', 'rb'))
 som.to_device(device)
-som.cluster(min_distance=1)
-X = numpy.load('contact_desc.npy')
-X = torch.from_numpy(X)
-X = X.float()
-X = X.to(device)
-smap = som.centroids.reshape((som.m, som.n, -1))
-som.smap = smap
-bmus, inference_error = som.predict(X)
-som.bmus = bmus
-som.inference_error = inference_error
 predicted_clusts, errors = som.predict_cluster(X)
-som.predicted_clusts = predicted_clusts
-som.errors = errors
-som.to_device('cpu')
-pickle.dump(som, open('som.pickle', 'wb'))
 \`\`\`
 EOF
 
-runcmd "./main.py"
+# runcmd "./main.py"
 
-cp -r figs figures
+# cp -r figs figures
 
 cat << EOF
 ## Input dataset:
