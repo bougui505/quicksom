@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import pickle
+import os
 import numpy
 import torch
 from quicksom.som import SOM
@@ -32,6 +33,7 @@ else:
     predicted_clusts, errors = som.predict_cluster(batch_size=args.batch)
 
 # numpy.savetxt(args.out_name, predicted_clusts, fmt='%d')
+numpy.savetxt(f"{os.path.splitext(args.out_name)[0]}_codebook.txt", som.codebook, fmt='%d')
 with open(args.out_name, 'w') as outfile:
     for cid in numpy.unique(predicted_clusts):
         inds = numpy.where(predicted_clusts == cid)[0]

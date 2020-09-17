@@ -505,7 +505,18 @@ class SOM(nn.Module):
         else:
             bmus, error = self.predict(samples, batch_size=batch_size)
             self.bmus = bmus
+            self.error = error
         flat_bmus = (self.bmus[:, 0] * self.n + self.bmus[:, 1]).astype(np.int32)
+        codebook = []
+        inds = np.arange(len(self.bmus))
+        for i in range(self.m * self.n):
+            sel = (flat_bmus == i)
+            if sel.sum() > 0:
+                ind = inds[sel][self.error[sel].argmin()]
+                codebook.append(ind)
+            else:
+                codebook.append(-1)
+        self.codebook = codebook
         return self.cluster_att[flat_bmus], error
 
 
