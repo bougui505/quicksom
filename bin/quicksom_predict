@@ -35,7 +35,7 @@ else:
 # numpy.savetxt(args.out_name, predicted_clusts, fmt='%d')
 numpy.savetxt(f"{os.path.splitext(args.out_name)[0]}_codebook.txt", som.codebook, fmt='%d')
 numpy.savetxt(f"{os.path.splitext(args.out_name)[0]}_bmus.txt", numpy.c_[som.bmus, som.error], fmt='%.4f')
-with open(args.out_name, 'w') as outfile:
+with open(f"{os.path.splitext(args.out_name)[0]}_clusters.txt", 'w') as outfile:
     for cid in numpy.unique(predicted_clusts):
         inds = numpy.where(predicted_clusts == cid)[0]
         outfile.write(f"{' '.join(['%d' % e for e in inds])}\n")
