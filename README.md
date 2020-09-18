@@ -105,13 +105,3 @@ som = pickle.load(open('som.pickle', 'rb'))
 som.to_device(device)
 predicted_clusts, errors = som.predict_cluster(X)
 ```
-## Input dataset:
-![input](https://raw.githubusercontent.com/bougui505/quicksom/master/figures/moons.png)
-## Umatrix:
-![Umatrix](https://raw.githubusercontent.com/bougui505/quicksom/master/figures/umat.png)
-## Data projection:
-![project](https://raw.githubusercontent.com/bougui505/quicksom/master/figures/project.png)
-## Cluster projection:
-![project](https://raw.githubusercontent.com/bougui505/quicksom/master/figures/project_clusts.png)
-## Cluster affectation:
-![project](https://raw.githubusercontent.com/bougui505/quicksom/master/figures/clusts.png)
