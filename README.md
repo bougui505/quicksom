@@ -18,22 +18,70 @@ The SOM object can be created using any grid size, with a optional periodic topo
 One can also choose optimization parameters such as the number of epochs to train or the batch size
 
 To use it, we include three scripts to fit a SOM, to optionally build
-the clusters manually with a gui and to predict cluster affectations 
+the clusters manually with a gui and to predict cluster affectations
 for new data points
-```bash
-quicksom_fit -h
-quicksom_gui -h
-quicksom_predict -h
-```
 
+```
+$ quicksom_fit -h
+
+usage: quicksom_fit [-h] -i IN_NAME [-o OUT_NAME] [-m M] [-n N] [--norm NORM]
+                    [--periodic] [--n_iter N_ITER] [--batch_size BATCH_SIZE]
+                    [--alpha ALPHA] [--sigma SIGMA] [--scheduler SCHEDULER]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -i IN_NAME, --in_name IN_NAME
+                        name of the .npy to use
+  -o OUT_NAME, --out_name OUT_NAME
+                        name of pickle to dump
+  -m M, --m M           The width of the som
+  -n N, --n N           The height of the som
+  --norm NORM           The p norm to use
+  --periodic            if set, periodic topology is used
+  --n_iter N_ITER       The number of iterations
+  --batch_size BATCH_SIZE
+                        The batch size to use
+  --alpha ALPHA         The initial learning rate
+  --sigma SIGMA         The initial sigma for the convolution
+  --scheduler SCHEDULER
+                        Which scheduler to use, can be linear, exp or half
+```
+```
+$ quicksom_gui -h
+
+usage: quicksom_gui [-h] [-i IN_NAME] [-o OUT_NAME]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -i IN_NAME, --in_name IN_NAME
+                        name of the som to load
+  -o OUT_NAME, --out_name OUT_NAME
+                        name of the som to dump if we want it different
+```
+```
+$ quicksom_predict -h
+
+usage: quicksom_predict [-h] [-i IN_NAME] [-o OUT_NAME] [-s SOM_NAME]
+                        [--recompute_cluster] [--batch BATCH]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -i IN_NAME, --in_name IN_NAME
+                        name of the npy file to use
+  -o OUT_NAME, --out_name OUT_NAME
+                        name of txt to dump
+  -s SOM_NAME, --som_name SOM_NAME
+                        name of pickle to load
+  --recompute_cluster   if set, periodic topology is used
+  --batch BATCH         Batch size
+```
 The SOM object is also importable from python scripts to use
 directly in your analysis pipelines.
-
 ```python
 import pickle
 import numpy
 import torch
-from quicksom.som import SOM
+from som import SOM
 
 # Get data
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -52,12 +100,11 @@ learning_error = som.fit(X, batch_size=batch_size)
 som.to_device('cpu')
 pickle.dump(som, open('som.pickle', 'wb'))
 
-# Usage on the input data, predicted_clusts is an array of length n_samples with clusters affectations 
+# Usage on the input data, predicted_clusts is an array of length n_samples with clusters affectations
 som = pickle.load(open('som.pickle', 'rb'))
 som.to_device(device)
 predicted_clusts, errors = som.predict_cluster(X)
 ```
-
 ## Input dataset:
 ![input](https://raw.githubusercontent.com/bougui505/quicksom/master/figures/moons.png)
 ## Umatrix:

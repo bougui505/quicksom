@@ -45,12 +45,13 @@ To use it, we include three scripts to fit a SOM, to optionally build
 the clusters manually with a gui and to predict cluster affectations
 for new data points
 
-\`\`\`bash
-quicksom_fit -h
-quicksom_gui -h
-quicksom_predict -h
-\`\`\`
+EOF
 
+runcmd "quicksom_fit -h"
+runcmd "quicksom_gui -h"
+runcmd "quicksom_predict -h"
+
+cat << EOF
 The SOM object is also importable from python scripts to use
 directly in your analysis pipelines.
 EOF
