@@ -87,6 +87,14 @@ predicted_clusts, errors = som.predict_cluster(X)
 \`\`\`
 EOF
 
+cat << EOF
+#### SOM analysis of molecular dynamics (MD) trajectories.
+The SOM algorithm can efficiently map MD trajectories for analysis and clustering purposes.
+The script \`dcd2npy\` can be used to select a subset of atoms from a trajectory in \`dcd\` format,
+align it and save the selection as a \`npy\` file that can be handled by the command \`quicksom_fit\`.
+EOF
+runcmd "dcd2npy -h"
+
 # runcmd "./main.py"
 
 # cp -r figs figures

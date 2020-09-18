@@ -105,3 +105,20 @@ som = pickle.load(open('som.pickle', 'rb'))
 som.to_device(device)
 predicted_clusts, errors = som.predict_cluster(X)
 ```
+#### SOM analysis of molecular dynamics (MD) trajectories.
+The SOM algorithm can efficiently map MD trajectories for analysis and clustering purposes.
+The script `dcd2npy` can be used to select a subset of atoms from a trajectory in `dcd` format,
+align it and save the selection as a `npy` file that can be handled by the command `quicksom_fit`.
+```
+$ dcd2npy -h
+
+usage: dcd2npy [-h] --pdb PDB --dcd DCD --select SELECTION
+
+Convert a dcd trajectory to a numpy object
+
+optional arguments:
+  -h, --help          show this help message and exit
+  --pdb PDB           Topology PDB file
+  --dcd DCD           DCD trajectory file
+  --select SELECTION  Atoms to select
+```
