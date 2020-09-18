@@ -89,6 +89,11 @@ EOF
 
 cat << EOF
 #### SOM analysis of molecular dynamics (MD) trajectories.
+
+##### Scripts and extra dependencies:
+- \`dcd2npy\`: [Pymol](https://anaconda.org/schrodinger/pymol)
+- \`mdx\`: [Pymol](https://anaconda.org/schrodinger/pymol), [pymol-psico](https://github.com/speleo3/pymol-psico)
+
 The SOM algorithm can efficiently map MD trajectories for analysis and clustering purposes.
 The script \`dcd2npy\` can be used to select a subset of atoms from a trajectory in \`dcd\` format,
 align it and save the selection as a \`npy\` file that can be handled by the command \`quicksom_fit\`.
