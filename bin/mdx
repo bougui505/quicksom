@@ -9,7 +9,7 @@ import sys
 import argparse
 import os
 import numpy
-import quicksom.dcd_reader
+import quicksom.dcd_reader as dcd_reader
 from pymol import cmd
 import psico.fullinit
 from psico.exporting import *
