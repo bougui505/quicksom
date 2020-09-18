@@ -125,9 +125,9 @@ class Wheel:
 
     def cluster(self):
         pos = self.click.pos
-        ind = numpy.ravel_multi_index(pos, (self.som.m, self.som.n))
-        dists = self.som.all_to_all_dist[ind][numpy.ravel_multi_index(self.local_min.T, (self.som.m, self.som.n))]
-        pos = tuple(self.local_min[numpy.argmin(dists)])
+        # ind = numpy.ravel_multi_index(pos, (self.som.m, self.som.n))
+        # dists = self.som.all_to_all_dist[ind][numpy.ravel_multi_index(self.local_min.T, (self.som.m, self.som.n))]
+        # pos = tuple(self.local_min[numpy.argmin(dists)])
         if self.pos != pos:
             self.threshold = self.som.umat[pos]
         uclusters = self.som.uumat < self.threshold
