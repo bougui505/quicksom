@@ -35,6 +35,8 @@ args = parser.parse_args()
 
 # For memory efficiency:
 cmd.set('defer_builds_mode', 3)
+# To keep original atom order
+cmd.set('retain_order', 1)
 
 if args.fframes is not None:
     args.frames = list(numpy.genfromtxt(args.fframes, dtype=int))
