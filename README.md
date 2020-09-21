@@ -205,6 +205,14 @@ done < data/2lj5_clusters.txt
 rm _clust.txt
 
 ```
+```
+$ ls -v data/cluster_*.dcd
+
+data/cluster_1.dcd
+data/cluster_2.dcd
+data/cluster_3.dcd
+data/cluster_4.dcd
+```
 The U-matrix can be plotted as follows:
 ```bash
 python3 -c 'import pickle

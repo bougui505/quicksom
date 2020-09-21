@@ -177,6 +177,7 @@ while read line; do
     CID=$((CID+1))
 done < data/2lj5_clusters.txt
 rm _clust.txt'
+runcmd "ls -v data/cluster_*.dcd"
 cat << EOF
 The U-matrix can be plotted as follows:
 EOF
