@@ -217,6 +217,7 @@ data/cluster_4.dcd
 ```bash
 grep -v "\-1" data/2lj5_codebook.txt > _codebook.txt
 mdx --top data/2lj5.pdb --traj data/2lj5.dcd --fframes _codebook.txt --out data/centroids.dcd
+rm _codebook.txt
 
 ```
 ##### Plotting the U-matrix:

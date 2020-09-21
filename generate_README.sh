@@ -182,7 +182,8 @@ cat << EOF
 ##### Extraction of the SOM centroids from the input \`dcd\`
 EOF
 runcmd_null 'grep -v "\-1" data/2lj5_codebook.txt > _codebook.txt
-mdx --top data/2lj5.pdb --traj data/2lj5.dcd --fframes _codebook.txt --out data/centroids.dcd'
+mdx --top data/2lj5.pdb --traj data/2lj5.dcd --fframes _codebook.txt --out data/centroids.dcd
+rm _codebook.txt'
 cat << EOF
 ##### Plotting the U-matrix:
 EOF
