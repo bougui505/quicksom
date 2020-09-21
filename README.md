@@ -111,7 +111,6 @@ predicted_clusts, errors = som.predict_cluster(X)
 ##### Scripts and extra dependencies:
 - `dcd2npy`: [Pymol](https://anaconda.org/schrodinger/pymol)
 - `mdx`: [Pymol](https://anaconda.org/schrodinger/pymol), [pymol-psico](https://github.com/speleo3/pymol-psico)
-
 ```
 conda install -c schrodinger pymol pymol-psico
 ```
@@ -145,7 +144,7 @@ dcdplugin) CHARMM format DCD file (also NAMD 2.1 and later)
  PyMOL not running, entering library mode (experimental)
 Coords shape: (301, 228)
 ```
-Fit the SOM:
+- Fit the SOM:
 ```
 $ quicksom_fit -i data/2lj5.npy -o data/som_2lj5.p --n_iter 100 --batch_size 50 --periodic --alpha 0.5
 
@@ -157,7 +156,7 @@ $ quicksom_fit -i data/2lj5.npy -o data/som_2lj5.p --n_iter 100 --batch_size 50 
 94/100: 150/301 | alpha: 0.033333 | sigma: 1.666667 | error: 5.373021 | time 142.033695
 97/100: 250/301 | alpha: 0.016667 | sigma: 0.833333 | error: 5.855451 | time 147.203326
 ```
-The SOM map can be analyzed and manually cluster using the Graphical User Unterface `quicksom_gui`:
+- The SOM map can be analyzed and manually cluster using the Graphical User Unterface `quicksom_gui`:
 ```bash
 quicksom_gui -i data/som_2lj5.p
 ```

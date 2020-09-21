@@ -120,7 +120,7 @@ The following commands can be applied for a MD clustering.
 EOF
 runcmd_cut "dcd2npy --pdb data/2lj5.pdb --dcd data/2lj5.dcd --select 'name CA'"
 cat << EOF
-Fit the SOM:
+- Fit the SOM:
 EOF
 if [ -f data/som_2lj5.p ]; then
     cat << EOF
@@ -141,7 +141,7 @@ runcmd_cut "quicksom_fit -i data/2lj5.npy -o data/som_2lj5.p --n_iter 100 --batc
 fi
 
 cat << EOF
-The SOM map can be analyzed and manually cluster using the Graphical User Unterface \`quicksom_gui\`:
+- The SOM map can be analyzed and manually cluster using the Graphical User Unterface \`quicksom_gui\`:
 \`\`\`bash
 quicksom_gui -i data/som_2lj5.p
 \`\`\`
