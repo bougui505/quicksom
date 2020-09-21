@@ -160,7 +160,7 @@ $ quicksom_fit -i data/2lj5.npy -o data/som_2lj5.p --n_iter 100 --batch_size 50 
 ```bash
 quicksom_gui -i data/som_2lj5.p
 ```
-- The cluster attribution is performed using:
+- The cluster assignment is performed using:
 ```
 $ quicksom_predict -i data/2lj5.npy -o data/2lj5 -s data/som_2lj5.p
 
