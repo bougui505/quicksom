@@ -177,3 +177,12 @@ while read line; do
     CID=$((CID+1))
 done < data/2lj5_clusters.txt
 rm _clust.txt'
+cat << EOF
+The U-matrix can be plotted as follows:
+EOF
+runcmd "python3 -c 'import pickle
+import matplotlib.pyplot as plt
+som=pickle.load(open(\"data/som_2lj5.p\", \"rb\"))
+plt.matshow(som.umat)
+plt.savefig(\"data/umat_2lj5.png\")
+'"
