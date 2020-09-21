@@ -148,4 +148,15 @@ quicksom_gui -i data/som_2lj5.p
 - The cluster assignment is performed using:
 EOF
 runcmd "quicksom_predict -i data/2lj5.npy -o data/2lj5 -s data/som_2lj5.p"
-
+cat << EOF
+This command generates 3 files:
+EOF
+runcmd "ls data/2lj5_*.txt"
+cat << EOF
+containing the data:
+- Best Matching Unit with error for each data point
+- Cluster assignment
+- Assignment for each SOM cell of the closest data point (BMU with minimal error). \`-1\` means no assignment
+EOF
+runcmd "head -3 data/2lj5_bmus.txt"
+runcmd "head -3 data/2lj5_clusters.txt"
