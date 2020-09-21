@@ -4,3 +4,17 @@ out/
 tags
 *.p
 *.npy
+data/2lj5_bmus.txt
+data/2lj5_clusters.txt
+data/2lj5_codebook.txt
+data/centroids.dcd
+data/centroids.pdb
+data/cluster_1.dcd
+data/cluster_1.pdb
+data/cluster_2.dcd
+data/cluster_2.pdb
+data/cluster_3.dcd
+data/cluster_3.pdb
+data/cluster_4.dcd
+data/cluster_4.pdb
+data/umat_2lj5.png
