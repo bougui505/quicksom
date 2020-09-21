@@ -145,4 +145,7 @@ cat << EOF
 \`\`\`bash
 quicksom_gui -i data/som_2lj5.p
 \`\`\`
+- The cluster attribution is performed using:
 EOF
+runcmd "quicksom_predict -i data/2lj5.npy -o data/2lj5 -s data/som_2lj5.p"
+
