@@ -134,7 +134,7 @@ optional arguments:
   --select SELECTION  Atoms to select
 ```
 The following commands can be applied for a MD clustering.
-- Create a npy file with atomic coordinates of C-alpha:
+##### Create a npy file with atomic coordinates of C-alpha:
 ```
 $ dcd2npy --pdb data/2lj5.pdb --dcd data/2lj5.dcd --select 'name CA'
 
@@ -146,7 +146,7 @@ dcdplugin) CHARMM format DCD file (also NAMD 2.1 and later)
  PyMOL not running, entering library mode (experimental)
 Coords shape: (301, 228)
 ```
-- Fit the SOM:
+##### Fit the SOM:
 ```
 $ quicksom_fit -i data/2lj5.npy -o data/som_2lj5.p --n_iter 100 --batch_size 50 --periodic --alpha 0.5
 
@@ -158,11 +158,11 @@ $ quicksom_fit -i data/2lj5.npy -o data/som_2lj5.p --n_iter 100 --batch_size 50 
 94/100: 150/301 | alpha: 0.033333 | sigma: 1.666667 | error: 5.373021 | time 142.033695
 97/100: 250/301 | alpha: 0.016667 | sigma: 0.833333 | error: 5.855451 | time 147.203326
 ```
-- The SOM map can be analyzed and manually cluster using the Graphical User Unterface `quicksom_gui`:
+##### Analysis and clustering of the map using `quicksom_gui`:
 ```bash
 quicksom_gui -i data/som_2lj5.p
 ```
-- The cluster assignment is performed using:
+##### Cluster assignment of input data points:
 ```
 $ quicksom_predict -i data/2lj5.npy -o data/2lj5 -s data/som_2lj5.p
 
@@ -177,9 +177,9 @@ data/2lj5_clusters.txt
 data/2lj5_codebook.txt
 ```
 containing the data:
-- Best Matching Unit with error for each data point
-- Cluster assignment
-- Assignment for each SOM cell of the closest data point (BMU with minimal error). `-1` means no assignment
+    - Best Matching Unit with error for each data point
+    - Cluster assignment
+    - Assignment for each SOM cell of the closest data point (BMU with minimal error). `-1` means no assignment
 ```
 $ head -3 data/2lj5_bmus.txt
 
@@ -194,7 +194,7 @@ $ head -3 data/2lj5_clusters.txt
 3 5 7 10 14 21 23 26 29 33 37 51 54 55 63 64 70 74 80 82 83 84 85 86 88 99 103 104 106 107 108 116 121 123 129 131 132 133 139 140 146 148 150 155 159 161 163 165 170 173 179 181 183 200 209 214 217 220 221 228 229 231 237 239 240 241 247 248 250 251 256 258 260 267 275 277 278 279 287 291 293 296 297 301
 1 2 8 11 12 13 15 17 18 19 20 24 25 30 31 35 38 41 42 50 52 56 58 60 61 62 65 66 68 69 71 72 73 79 87 89 90 91 93 95 96 97 101 105 109 110 112 113 114 118 120 122 124 125 130 134 136 137 138 141 143 144 145 151 152 156 157 158 160 166 168 169 174 175 176 177 178 184 187 188 193 195 201 205 208 210 211 212 213 215 216 222 225 230 232 233 234 236 242 244 246 249 252 253 254 259 261 262 264 266 268 270 271 272 274 276 280 282 283 284 288 289 290 295 298 300
 ```
-To extract the clusters from the input `dcd` one can use the `mdx` tool as follow:
+##### Cluster extractions from the input `dcd` using the `mdx` tool:
 ```bash
 CID=1
 while read line; do
@@ -213,7 +213,7 @@ data/cluster_2.dcd
 data/cluster_3.dcd
 data/cluster_4.dcd
 ```
-The U-matrix can be plotted as follows:
+##### Plotting the U-matrix:
 ```bash
 python3 -c 'import pickle
 import matplotlib.pyplot as plt

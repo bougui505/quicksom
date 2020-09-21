@@ -123,11 +123,11 @@ runcmd "dcd2npy -h"
 
 cat << EOF
 The following commands can be applied for a MD clustering.
-- Create a npy file with atomic coordinates of C-alpha:
+##### Create a npy file with atomic coordinates of C-alpha:
 EOF
 runcmd_cut "dcd2npy --pdb data/2lj5.pdb --dcd data/2lj5.dcd --select 'name CA'"
 cat << EOF
-- Fit the SOM:
+##### Fit the SOM:
 EOF
 if [ -f data/som_2lj5.p ]; then
     cat << EOF
@@ -148,11 +148,11 @@ runcmd_cut "quicksom_fit -i data/2lj5.npy -o data/som_2lj5.p --n_iter 100 --batc
 fi
 
 cat << EOF
-- The SOM map can be analyzed and manually cluster using the Graphical User Unterface \`quicksom_gui\`:
+##### Analysis and clustering of the map using \`quicksom_gui\`:
 \`\`\`bash
 quicksom_gui -i data/som_2lj5.p
 \`\`\`
-- The cluster assignment is performed using:
+##### Cluster assignment of input data points:
 EOF
 runcmd "quicksom_predict -i data/2lj5.npy -o data/2lj5 -s data/som_2lj5.p"
 cat << EOF
@@ -161,14 +161,14 @@ EOF
 runcmd "ls data/2lj5_*.txt"
 cat << EOF
 containing the data:
-- Best Matching Unit with error for each data point
-- Cluster assignment
-- Assignment for each SOM cell of the closest data point (BMU with minimal error). \`-1\` means no assignment
+    - Best Matching Unit with error for each data point
+    - Cluster assignment
+    - Assignment for each SOM cell of the closest data point (BMU with minimal error). \`-1\` means no assignment
 EOF
 runcmd "head -3 data/2lj5_bmus.txt"
 runcmd "head -3 data/2lj5_clusters.txt"
 cat << EOF
-To extract the clusters from the input \`dcd\` one can use the \`mdx\` tool as follow:
+##### Cluster extractions from the input \`dcd\` using the \`mdx\` tool:
 EOF
 runcmd_null 'CID=1
 while read line; do
@@ -179,7 +179,7 @@ done < data/2lj5_clusters.txt
 rm _clust.txt'
 runcmd "ls -v data/cluster_*.dcd"
 cat << EOF
-The U-matrix can be plotted as follows:
+##### Plotting the U-matrix:
 EOF
 runcmd_null "python3 -c 'import pickle
 import matplotlib.pyplot as plt
