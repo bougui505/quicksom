@@ -23,6 +23,13 @@ func runcmd_cut() {
     echo "\`\`\`"
 }
 
+func runcmd_null() {
+    OUTPUT=$(eval $1)
+    echo "\`\`\`bash"
+    echo "$1\n"
+    echo "\`\`\`"
+}
+
 [ -d figures ] && rm -r figures
 
 cat << EOF
@@ -160,3 +167,13 @@ containing the data:
 EOF
 runcmd "head -3 data/2lj5_bmus.txt"
 runcmd "head -3 data/2lj5_clusters.txt"
+cat << EOF
+To extract the clusters from the input \`dcd\` one can use the \`mdx\` tool as follow:
+EOF
+runcmd_null 'CID=1
+while read line; do
+    echo $line > _clust.txt
+    mdx --top data/2lj5.pdb --traj data/2lj5.dcd --fframes _clust.txt --out data/cluster_$CID.dcd
+    CID=$((CID+1))
+done < data/2lj5_clusters.txt
+rm _clust.txt'
