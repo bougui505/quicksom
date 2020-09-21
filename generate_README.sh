@@ -13,6 +13,16 @@ func runcmd() {
     echo "\`\`\`"
 }
 
+func runcmd_cut() {
+    OUTPUT=$(eval $1)
+    echo "\`\`\`"
+    echo "$ $1\n"
+    echo "$OUTPUT" | head -3
+    echo "[...]"
+    echo "$OUTPUT" | tail -3
+    echo "\`\`\`"
+}
+
 [ -d figures ] && rm -r figures
 
 cat << EOF
@@ -100,19 +110,35 @@ align it and save the selection as a \`npy\` file that can be handled by the com
 EOF
 runcmd "dcd2npy -h"
 
-# runcmd "./main.py"
+cat << EOF
+The following commands can be applied for a MD clustering.
+- Create a npy file with atomic coordinates of C-alpha:
+EOF
+runcmd_cut "dcd2npy --pdb data/2lj5.pdb --dcd data/2lj5.dcd --select 'name CA'"
+cat << EOF
+Fit the SOM:
+EOF
+if [ -f data/som_2lj5.p ]; then
+    cat << EOF
+\`\`\`
+$ quicksom_fit -i data/2lj5.npy -o data/som_2lj5.p --n_iter 100 --batch_size 50 --periodic --alpha 0.5
 
-# cp -r figs figures
+1/100: 50/301 | alpha: 0.500000 | sigma: 25.000000 | error: 397.090729 | time 0.387760
+4/100: 150/301 | alpha: 0.483333 | sigma: 24.166667 | error: 8.836357 | time 5.738029
+7/100: 250/301 | alpha: 0.466667 | sigma: 23.333333 | error: 8.722509 | time 11.213565
+[...]
+91/100: 50/301 | alpha: 0.050000 | sigma: 2.500000 | error: 5.658005 | time 137.348755
+94/100: 150/301 | alpha: 0.033333 | sigma: 1.666667 | error: 5.373021 | time 142.033695
+97/100: 250/301 | alpha: 0.016667 | sigma: 0.833333 | error: 5.855451 | time 147.203326
+\`\`\`
+EOF
+else
+runcmd_cut "quicksom_fit -i data/2lj5.npy -o data/som_2lj5.p --n_iter 100 --batch_size 50 --periodic --alpha 0.5"
+fi
 
-# cat << EOF
-# ## Input dataset:
-# ![input](https://raw.githubusercontent.com/bougui505/quicksom/master/figures/moons.png)
-# ## Umatrix:
-# ![Umatrix](https://raw.githubusercontent.com/bougui505/quicksom/master/figures/umat.png)
-# ## Data projection:
-# ![project](https://raw.githubusercontent.com/bougui505/quicksom/master/figures/project.png)
-# ## Cluster projection:
-# ![project](https://raw.githubusercontent.com/bougui505/quicksom/master/figures/project_clusts.png)
-# ## Cluster affectation:
-# ![project](https://raw.githubusercontent.com/bougui505/quicksom/master/figures/clusts.png)
-# EOF
+cat << EOF
+The SOM map can be analyzed and manually cluster using the Graphical User Unterface \`quicksom_gui\`:
+\`\`\`bash
+quicksom_gui -i data/som_2lj5.p
+\`\`\`
+EOF

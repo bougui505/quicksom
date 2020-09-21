@@ -127,3 +127,32 @@ optional arguments:
   --dcd DCD           DCD trajectory file
   --select SELECTION  Atoms to select
 ```
+The following commands can be applied for a MD clustering.
+- Create a npy file with atomic coordinates of C-alpha:
+```
+$ dcd2npy --pdb data/2lj5.pdb --dcd data/2lj5.dcd --select 'name CA'
+
+dcdplugin) detected standard 32-bit DCD file of native endianness
+dcdplugin) CHARMM format DCD file (also NAMD 2.1 and later)
+ ObjectMolecule: read set 1 into state 2...
+[...]
+ ObjectMolecule: read set 301 into state 302...
+ PyMOL not running, entering library mode (experimental)
+Coords shape: (301, 228)
+```
+Fit the SOM:
+```
+$ quicksom_fit -i data/2lj5.npy -o data/som_2lj5.p --n_iter 100 --batch_size 50 --periodic --alpha 0.5
+
+1/100: 50/301 | alpha: 0.500000 | sigma: 25.000000 | error: 397.090729 | time 0.387760
+4/100: 150/301 | alpha: 0.483333 | sigma: 24.166667 | error: 8.836357 | time 5.738029
+7/100: 250/301 | alpha: 0.466667 | sigma: 23.333333 | error: 8.722509 | time 11.213565
+[...]
+91/100: 50/301 | alpha: 0.050000 | sigma: 2.500000 | error: 5.658005 | time 137.348755
+94/100: 150/301 | alpha: 0.033333 | sigma: 1.666667 | error: 5.373021 | time 142.033695
+97/100: 250/301 | alpha: 0.016667 | sigma: 0.833333 | error: 5.855451 | time 147.203326
+```
+The SOM map can be analyzed and manually cluster using the Graphical User Unterface `quicksom_gui`:
+```bash
+quicksom_gui -i data/som_2lj5.p
+```
