@@ -180,7 +180,7 @@ rm _clust.txt'
 cat << EOF
 The U-matrix can be plotted as follows:
 EOF
-runcmd "python3 -c 'import pickle
+runcmd_null "python3 -c 'import pickle
 import matplotlib.pyplot as plt
 som=pickle.load(open(\"data/som_2lj5.p\", \"rb\"))
 plt.matshow(som.umat)

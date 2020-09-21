@@ -206,13 +206,12 @@ rm _clust.txt
 
 ```
 The U-matrix can be plotted as follows:
-```
-$ python3 -c 'import pickle
+```bash
+python3 -c 'import pickle
 import matplotlib.pyplot as plt
 som=pickle.load(open("data/som_2lj5.p", "rb"))
 plt.matshow(som.umat)
 plt.savefig("data/umat_2lj5.png")
 '
-
 
 ```
