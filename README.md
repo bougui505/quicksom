@@ -9,7 +9,8 @@ The SOM object requires torch installed.
 It has dependencies in numpy, scipy and scikit-learn and scikit-image.
 The MD application requires pymol to load the trajectory that is not included in the dependencies
 
-To set up the project, install pytorch and run :
+To set up the project, we suggest using conda environments.
+Install [PyTorch](https://pytorch.org/get-started/locally/) and run :
 ```
 pip install quicksom
 ```
@@ -110,6 +111,10 @@ predicted_clusts, errors = som.predict_cluster(X)
 ##### Scripts and extra dependencies:
 - `dcd2npy`: [Pymol](https://anaconda.org/schrodinger/pymol)
 - `mdx`: [Pymol](https://anaconda.org/schrodinger/pymol), [pymol-psico](https://github.com/speleo3/pymol-psico)
+
+```
+conda install -c schrodinger pymol pymol-psico
+```
 
 The SOM algorithm can efficiently map MD trajectories for analysis and clustering purposes.
 The script `dcd2npy` can be used to select a subset of atoms from a trajectory in `dcd` format,
