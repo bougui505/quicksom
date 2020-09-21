@@ -213,6 +213,12 @@ data/cluster_2.dcd
 data/cluster_3.dcd
 data/cluster_4.dcd
 ```
+##### Extraction of the SOM centroids from the input `dcd`
+```bash
+grep -v "\-1" data/2lj5_codebook.txt > _codebook.txt
+mdx --top data/2lj5.pdb --traj data/2lj5.dcd --fframes _codebook.txt --out data/centroids.dcd
+
+```
 ##### Plotting the U-matrix:
 ```bash
 python3 -c 'import pickle

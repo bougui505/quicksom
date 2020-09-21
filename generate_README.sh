@@ -179,6 +179,11 @@ done < data/2lj5_clusters.txt
 rm _clust.txt'
 runcmd "ls -v data/cluster_*.dcd"
 cat << EOF
+##### Extraction of the SOM centroids from the input \`dcd\`
+EOF
+runcmd_null 'grep -v "\-1" data/2lj5_codebook.txt > _codebook.txt
+mdx --top data/2lj5.pdb --traj data/2lj5.dcd --fframes _codebook.txt --out data/centroids.dcd'
+cat << EOF
 ##### Plotting the U-matrix:
 EOF
 runcmd_null "python3 -c 'import pickle
