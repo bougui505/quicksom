@@ -82,7 +82,7 @@ class SOM(nn.Module):
         else:
             self.alpha = alpha
         if sigma is None:
-            self.sigma = max(m, n) / 2.0
+            self.sigma = np.sqrt(self.m * self.n) / 2.0
         else:
             self.sigma = float(sigma)
 
