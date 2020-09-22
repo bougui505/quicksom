@@ -61,6 +61,6 @@ for i in range(dim1)[::args.stride]:
             U.append(flow_[0])
             V.append(flow_[1])
             uvals.append(umat[i, j])
-plt.matshow(som.umat.T)
-plt.quiver(X, Y, U, V, color='w')
+plt.matshow(som.umat)
+plt.quiver(Y, X, -numpy.asarray(V), -numpy.asarray(U), color='w')
 plt.show()
