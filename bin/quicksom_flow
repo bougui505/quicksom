@@ -16,6 +16,7 @@ parser = argparse.ArgumentParser(description='Plot flow for time serie clusterin
 parser.add_argument("-s", "--som_name", default='som.p', help="name of the SOM pickle to load")
 parser.add_argument("-b", "--bmus", default='out_bmus.txt', help="BMU file to plot")
 parser.add_argument("-n", "--norm", default=False, action="store_true", help="Normalize flow as unit vectors")
+parser.add_argument("--stride", default=1, help="Stride of the vectors field", type=int)
 args, _ = parser.parse_known_args()
 
 
@@ -39,10 +40,10 @@ bmus = numpy.genfromtxt(args.bmus, usecols=(0, 1))
 npts = bmus.shape[0]
 dim1, dim2 = som.m, som.n
 X, Y, U, V, uvals = [], [], [], [], []
-for i in range(dim1):
+for i in range(dim1)[::args.stride]:
     sys.stdout.write(f'{i+1}/{dim1}\r')
     sys.stdout.flush()
-    for j in range(dim2):
+    for j in range(dim2)[::args.stride]:
         inds = numpy.where((bmus == [i, j]).all(axis=1))[0]
         if len(inds) > 0:
             inds_next = inds + 1
