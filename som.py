@@ -520,7 +520,7 @@ class SOM(nn.Module):
         if not user:
             return self.cluster_att[flat_bmus], error
         else:
-            return self.clusters_user[flat_bmus], error
+            return self.clusters_user.flatten()[flat_bmus], error
 
 
 if __name__ == '__main__':
