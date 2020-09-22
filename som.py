@@ -308,9 +308,9 @@ class SOM(nn.Module):
         - adj: Adjacency matrix of the corresponding U-matrix
         """
         n1, n2 = umat.shape
-        # mstree = graph.minimum_spanning_tree(adj)
+        mstree = graph.minimum_spanning_tree(adj)
         start = umat.argmin()
-        sdist, pred = graph.shortest_path(adj, indices=start, directed=False,
+        sdist, pred = graph.shortest_path(mstree, indices=start, directed=False,
                                           return_predecessors=True)
         floodpath = np.asarray(np.unravel_index(sdist.argsort(), (n1, n2))).T
         parents_floodpath = np.asarray(np.unravel_index(pred[sdist.argsort()][1:], (n1, n2))).T
