@@ -489,7 +489,7 @@ class SOM(nn.Module):
         self.cluster_att = wheel.expanded_clusters.flatten()
         self.clusters_user = wheel.clusters
 
-    def predict_cluster(self, samples=None, batch_size=100):
+    def predict_cluster(self, samples=None, batch_size=100, user=False):
         """
         we have a mapping from each unit to its cluster in the flattened form in self.cluster_att
         Then we need to turn the bmu attributions into the index in this list and return the cluster attributions
@@ -517,7 +517,10 @@ class SOM(nn.Module):
             else:
                 codebook.append(-1)
         self.codebook = codebook
-        return self.cluster_att[flat_bmus], error
+        if not user:
+            return self.cluster_att[flat_bmus], error
+        else:
+            return self.clusters_user[flat_bmus], error
 
 
 if __name__ == '__main__':
