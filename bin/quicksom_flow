@@ -51,9 +51,9 @@ for i in range(dim1)[::args.stride]:
             inds_next = inds_next[sel]
             inds = inds[sel]
             if som.periodic:
-                flow_ = (topoflow(bmus[inds], bmus[inds_next], som)).mean(axis=0)
+                flow_ = (topoflow(bmus[inds], bmus[inds_next], som)).sum(axis=0)
             else:
-                flow_ = (bmus[inds_next] - bmus[inds]).mean(axis=0)
+                flow_ = (bmus[inds_next] - bmus[inds]).sum(axis=0)
             if args.norm:
                 flow_ /= numpy.linalg.norm(flow_, axis=0)
             X.append(i)
