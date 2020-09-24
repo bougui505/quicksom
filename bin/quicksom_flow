@@ -16,6 +16,7 @@ parser = argparse.ArgumentParser(description='Plot flow for time serie clusterin
 parser.add_argument("-s", "--som_name", default='som.p', help="name of the SOM pickle to load")
 parser.add_argument("-b", "--bmus", default='out_bmus.txt', help="BMU file to plot")
 parser.add_argument("-n", "--norm", default=False, action="store_true", help="Normalize flow as unit vectors")
+parser.add_argument("-m", "--mean", default=False, action="store_true", help="Average the flow by the number of structure per SOM cell")
 parser.add_argument("--stride", default=1, help="Stride of the vectors field", type=int)
 args, _ = parser.parse_known_args()
 
@@ -51,9 +52,15 @@ for i in range(dim1):
             inds_next = inds_next[sel]
             inds = inds[sel]
             if som.periodic:
-                flow_ = (topoflow(bmus[inds], bmus[inds_next], som)).sum(axis=0)
+                if args.mean:
+                    flow_ = (topoflow(bmus[inds], bmus[inds_next], som)).mean(axis=0)
+                else:
+                    flow_ = (topoflow(bmus[inds], bmus[inds_next], som)).sum(axis=0)
             else:
-                flow_ = (bmus[inds_next] - bmus[inds]).sum(axis=0)
+                if args.mean:
+                    flow_ = (bmus[inds_next] - bmus[inds]).mean(axis=0)
+                else:
+                    flow_ = (bmus[inds_next] - bmus[inds]).sum(axis=0)
             if args.norm:
                 flow_ /= numpy.linalg.norm(flow_, axis=0)
             X.append(i)
