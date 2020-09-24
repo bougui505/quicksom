@@ -63,7 +63,7 @@ optional arguments:
 $ quicksom_predict -h
 
 usage: quicksom_predict [-h] [-i IN_NAME] [-o OUT_NAME] [-s SOM_NAME]
-                        [--recompute_cluster] [--batch BATCH]
+                        [--recompute_cluster] [--batch BATCH] [--subset]
 
 All the indices are starting from 1.
 
@@ -77,6 +77,8 @@ optional arguments:
                         name of pickle to load
   --recompute_cluster   if set, periodic topology is used
   --batch BATCH         Batch size
+  --subset              Use the user defined clusters instead of the expanded
+                        partition.
 ```
 The SOM object is also importable from python scripts to use
 directly in your analysis pipelines.
@@ -229,4 +231,21 @@ plt.matshow(som.umat)
 plt.savefig("data/umat_2lj5.png")
 '
 
+```
+##### Flow analysis
+The flow of the trajectory can be projected onto the U-matrix using the following command:
+```
+$ quicksom_flow -h
+
+usage: quicksom_flow [-h] [-s SOM_NAME] [-b BMUS] [-n] [--stride STRIDE]
+
+Plot flow for time serie clustering.
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -s SOM_NAME, --som_name SOM_NAME
+                        name of the SOM pickle to load
+  -b BMUS, --bmus BMUS  BMU file to plot
+  -n, --norm            Normalize flow as unit vectors
+  --stride STRIDE       Stride of the vectors field
 ```
