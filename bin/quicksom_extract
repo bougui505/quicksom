@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+# -*- coding: UTF8 -*-
+
+# Author: Guillaume Bouvier -- guillaume.bouvier@pasteur.fr
+# https://research.pasteur.fr/en/member/guillaume-bouvier/
+# 2020-09-24 15:34:17 (UTC+0200)
+
+function usage {
+    echo "Extract clusters from a dcd file"
+    echo "    quicksom_extract -p pdb_file -t dcd_file -c cluster_file"
+    exit
+}
+
+if [ "$#" -ne 6 ]; then
+    usage
+fi
+
+while getopts ":p:t:c:" opt; do
+  case ${opt} in
+    p )
+      PDB=$OPTARG
+      ;;
+    t )
+      TRAJ=$OPTARG
+      ;;
+    c )
+      CLUST=$OPTARG
+      ;;
+    \? )
+      usage
+      ;;
+    : )
+      usage
+      ;;
+  esac
+done
+
+echo "PDB topology file: $PDB"
+echo "DCD trajectory file: $TRAJ"
+echo "Clusters file: $CLUST"
+TRAJBN=$(basename $TRAJ)
+TRAJPATH="./$(dirname $TRAJ)"
+echo $TRAJPATH $TRAJBN
+
+CID=1
+while read line; do
+    echo $line > _clust.txt
+    mdx --top $PDB --traj $TRAJ --fframes _clust.txt --out "$TRAJPATH/cluster_$CID.dcd"
+    CID=$((CID+1))
+done < $CLUST
+rm _clust.txt
