@@ -37,12 +37,13 @@ cat << EOF
 PyTorch implementation of a Self-Organizing Map.
 The implementation makes possible the use of a GPU if available for faster computations.
 It follows the scikit package semantics for training and usage of the model.
+It also includes runnable scripts to avoid coding.
 
 EOF
 
 cat << EOF
 ### Requirements and setup
-The SOM object requires torch installed.
+The SOM object requires PyTorch installed.
 
 It has dependencies in numpy, scipy and scikit-learn and scikit-image.
 The MD application requires pymol to load the trajectory that is not included in the dependencies
@@ -59,9 +60,10 @@ cat << EOF
 The SOM object can be created using any grid size, with a optional periodic topology.
 One can also choose optimization parameters such as the number of epochs to train or the batch size
 
-To use it, we include three scripts to fit a SOM, to optionally build
-the clusters manually with a gui and to predict cluster affectations
-for new data points
+To use it, we include three scripts to :
+ - fit a SOM
+ - to optionally build the clusters manually with a gui
+ - to predict cluster affectations for new data points
 
 EOF
 
@@ -71,7 +73,7 @@ runcmd "quicksom_predict -h"
 
 cat << EOF
 The SOM object is also importable from python scripts to use
-directly in your analysis pipelines.
+directly in your analysis pipelines :
 EOF
 
 cat << EOF
@@ -111,6 +113,7 @@ cat << EOF
 #### Scripts and extra dependencies:
 - \`dcd2npy\`: [Pymol](https://anaconda.org/schrodinger/pymol)
 - \`mdx\`: [Pymol](https://anaconda.org/schrodinger/pymol), [pymol-psico](https://github.com/speleo3/pymol-psico)
+
 To set these dependencies up using conda, just type :
 \`\`\`
 conda install -c schrodinger pymol pymol-psico
