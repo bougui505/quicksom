@@ -41,7 +41,7 @@ It follows the scikit package semantics for training and usage of the model.
 EOF
 
 cat << EOF
-#### Requirements and setup
+### Requirements and setup
 The SOM object requires torch installed.
 
 It has dependencies in numpy, scipy and scikit-learn and scikit-image.
@@ -55,7 +55,7 @@ pip install quicksom
 EOF
 
 cat << EOF
-#### SOM object interface
+### SOM object interface
 The SOM object can be created using any grid size, with a optional periodic topology.
 One can also choose optimization parameters such as the number of epochs to train or the batch size
 
@@ -106,11 +106,12 @@ predicted_clusts, errors = som.predict_cluster(X)
 EOF
 
 cat << EOF
-#### SOM analysis of molecular dynamics (MD) trajectories.
+### SOM training on molecular dynamics (MD) trajectories
 
-##### Scripts and extra dependencies:
+#### Scripts and extra dependencies:
 - \`dcd2npy\`: [Pymol](https://anaconda.org/schrodinger/pymol)
 - \`mdx\`: [Pymol](https://anaconda.org/schrodinger/pymol), [pymol-psico](https://github.com/speleo3/pymol-psico)
+To set these dependencies up using conda, just type :
 \`\`\`
 conda install -c schrodinger pymol pymol-psico
 \`\`\`
@@ -123,11 +124,11 @@ runcmd "dcd2npy -h"
 
 cat << EOF
 The following commands can be applied for a MD clustering.
-##### Create a npy file with atomic coordinates of C-alpha:
+#### Create a npy file with atomic coordinates of C-alpha:
 EOF
 runcmd_cut "dcd2npy --pdb data/2lj5.pdb --dcd data/2lj5.dcd --select 'name CA'"
 cat << EOF
-##### Fit the SOM:
+#### Fit the SOM:
 EOF
 if [ -f data/som_2lj5.p ]; then
     cat << EOF
@@ -148,11 +149,17 @@ runcmd_cut "quicksom_fit -i data/2lj5.npy -o data/som_2lj5.p --n_iter 100 --batc
 fi
 
 cat << EOF
-##### Analysis and clustering of the map using \`quicksom_gui\`:
+
+#### Analysis and clustering of the map using \`quicksom_gui\`:
 \`\`\`bash
 quicksom_gui -i data/som_2lj5.p
 \`\`\`
-##### Cluster assignment of input data points:
+
+### Analysis of MD trajectories with this SOM
+We now have a trained SOM and we can use several functionalities such as clustering input data points and grouping them
+into separate dcd files, creating a dcd with one centroid per fram or plotting of the U-Matrix and its flow.
+
+#### Cluster assignment of input data points:
 EOF
 runcmd "quicksom_predict -i data/2lj5.npy -o data/2lj5 -s data/som_2lj5.p"
 cat << EOF
@@ -168,7 +175,7 @@ EOF
 runcmd "head -3 data/2lj5_bmus.txt"
 runcmd "head -3 data/2lj5_clusters.txt"
 cat << EOF
-##### Cluster extractions from the input \`dcd\` using the \`mdx\` tool:
+#### Cluster extractions from the input \`dcd\` using the \`mdx\` tool:
 EOF
 runcmd_null 'CID=1
 while read line; do
@@ -179,13 +186,13 @@ done < data/2lj5_clusters.txt
 rm _clust.txt'
 runcmd "ls -v data/cluster_*.dcd"
 cat << EOF
-##### Extraction of the SOM centroids from the input \`dcd\`
+#### Extraction of the SOM centroids from the input \`dcd\`
 EOF
 runcmd_null 'grep -v "\-1" data/2lj5_codebook.txt > _codebook.txt
 mdx --top data/2lj5.pdb --traj data/2lj5.dcd --fframes _codebook.txt --out data/centroids.dcd
 rm _codebook.txt'
 cat << EOF
-##### Plotting the U-matrix:
+#### Plotting the U-matrix:
 EOF
 runcmd_null "python3 -c 'import pickle
 import matplotlib.pyplot as plt
@@ -194,7 +201,7 @@ plt.matshow(som.umat)
 plt.savefig(\"data/umat_2lj5.png\")
 '"
 cat << EOF
-##### Flow analysis
+#### Flow analysis
 The flow of the trajectory can be projected onto the U-matrix using the following command:
 EOF
 runcmd "quicksom_flow -h"
