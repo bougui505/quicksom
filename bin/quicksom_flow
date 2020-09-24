@@ -36,14 +36,14 @@ def topoflow(bmu1, bmu2, som):
 
 som = pickle.load(open(args.som_name, 'rb'))
 umat = som.umat
-bmus = numpy.genfromtxt(args.bmus, usecols=(0, 1))
+bmus = numpy.genfromtxt(args.bmus, usecols=(0, 1))[::args.stride]
 npts = bmus.shape[0]
 dim1, dim2 = som.m, som.n
 X, Y, U, V, uvals = [], [], [], [], []
-for i in range(dim1)[::args.stride]:
+for i in range(dim1):
     sys.stdout.write(f'{i+1}/{dim1}\r')
     sys.stdout.flush()
-    for j in range(dim2)[::args.stride]:
+    for j in range(dim2):
         inds = numpy.where((bmus == [i, j]).all(axis=1))[0]
         if len(inds) > 0:
             inds_next = inds + 1
