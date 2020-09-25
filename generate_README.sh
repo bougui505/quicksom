@@ -178,7 +178,7 @@ EOF
 runcmd "head -3 data/2lj5_bmus.txt"
 runcmd "head -3 data/2lj5_clusters.txt"
 cat << EOF
-#### Cluster extractions from the input \`dcd\` using the \`mdx\` tool:
+#### Cluster extractions from the input \`dcd\` using the \`quicksom_extract\` tool:
 EOF
 runcmd 'quicksom_extract -h'
 runcmd_cut 'quicksom_extract -p data/2lj5.pdb -t data/2lj5.dcd -c data/2lj5_clusters.txt'
