@@ -2,9 +2,10 @@
 PyTorch implementation of a Self-Organizing Map.
 The implementation makes possible the use of a GPU if available for faster computations.
 It follows the scikit package semantics for training and usage of the model.
+It also includes runnable scripts to avoid coding.
 
-#### Requirements and setup
-The SOM object requires torch installed.
+### Requirements and setup
+The SOM object requires PyTorch installed.
 
 It has dependencies in numpy, scipy and scikit-learn and scikit-image.
 The MD application requires pymol to load the trajectory that is not included in the dependencies
@@ -14,13 +15,14 @@ Install [PyTorch](https://pytorch.org/get-started/locally/) and run :
 ```
 pip install quicksom
 ```
-#### SOM object interface
+### SOM object interface
 The SOM object can be created using any grid size, with a optional periodic topology.
 One can also choose optimization parameters such as the number of epochs to train or the batch size
 
-To use it, we include three scripts to fit a SOM, to optionally build
-the clusters manually with a gui and to predict cluster affectations
-for new data points
+To use it, we include three scripts to :
+ - fit a SOM
+ - to optionally build the clusters manually with a gui
+ - to predict cluster affectations for new data points
 
 ```
 $ quicksom_fit -h
@@ -81,7 +83,7 @@ optional arguments:
                         partition.
 ```
 The SOM object is also importable from python scripts to use
-directly in your analysis pipelines.
+directly in your analysis pipelines :
 ```python
 import pickle
 import numpy
@@ -110,11 +112,13 @@ som = pickle.load(open('som.pickle', 'rb'))
 som.to_device(device)
 predicted_clusts, errors = som.predict_cluster(X)
 ```
-#### SOM analysis of molecular dynamics (MD) trajectories.
+### SOM training on molecular dynamics (MD) trajectories
 
-##### Scripts and extra dependencies:
+#### Scripts and extra dependencies:
 - `dcd2npy`: [Pymol](https://anaconda.org/schrodinger/pymol)
 - `mdx`: [Pymol](https://anaconda.org/schrodinger/pymol), [pymol-psico](https://github.com/speleo3/pymol-psico)
+
+To set these dependencies up using conda, just type :
 ```
 conda install -c schrodinger pymol pymol-psico
 ```
@@ -136,7 +140,7 @@ optional arguments:
   --select SELECTION  Atoms to select
 ```
 The following commands can be applied for a MD clustering.
-##### Create a npy file with atomic coordinates of C-alpha:
+#### Create a npy file with atomic coordinates of C-alpha:
 ```
 $ dcd2npy --pdb data/2lj5.pdb --dcd data/2lj5.dcd --select 'name CA'
 
@@ -148,7 +152,7 @@ dcdplugin) CHARMM format DCD file (also NAMD 2.1 and later)
  PyMOL not running, entering library mode (experimental)
 Coords shape: (301, 228)
 ```
-##### Fit the SOM:
+#### Fit the SOM:
 ```
 $ quicksom_fit -i data/2lj5.npy -o data/som_2lj5.p --n_iter 100 --batch_size 50 --periodic --alpha 0.5
 
@@ -160,15 +164,20 @@ $ quicksom_fit -i data/2lj5.npy -o data/som_2lj5.p --n_iter 100 --batch_size 50 
 94/100: 150/301 | alpha: 0.033333 | sigma: 1.666667 | error: 5.373021 | time 142.033695
 97/100: 250/301 | alpha: 0.016667 | sigma: 0.833333 | error: 5.855451 | time 147.203326
 ```
-##### Analysis and clustering of the map using `quicksom_gui`:
+
+#### Analysis and clustering of the map using `quicksom_gui`:
 ```bash
 quicksom_gui -i data/som_2lj5.p
 ```
-##### Cluster assignment of input data points:
-```
-$ quicksom_predict -i data/2lj5.npy -o data/2lj5 -s data/som_2lj5.p
 
-1/42/43/44/4
+### Analysis of MD trajectories with this SOM
+We now have a trained SOM and we can use several functionalities such as clustering input data points and grouping them
+into separate dcd files, creating a dcd with one centroid per fram or plotting of the U-Matrix and its flow.
+
+#### Cluster assignment of input data points:
+```bash
+quicksom_predict -i data/2lj5.npy -o data/2lj5 -s data/som_2lj5.p
+
 ```
 This command generates 3 files:
 ```
@@ -196,16 +205,23 @@ $ head -3 data/2lj5_clusters.txt
 3 5 7 10 14 21 23 26 29 33 37 51 54 55 63 64 70 74 80 82 83 84 85 86 88 99 103 104 106 107 108 116 121 123 129 131 132 133 139 140 146 148 150 155 159 161 163 165 170 173 179 181 183 200 209 214 217 220 221 228 229 231 237 239 240 241 247 248 250 251 256 258 260 267 275 277 278 279 287 291 293 296 297 301
 1 2 8 11 12 13 15 17 18 19 20 24 25 30 31 35 38 41 42 50 52 56 58 60 61 62 65 66 68 69 71 72 73 79 87 89 90 91 93 95 96 97 101 105 109 110 112 113 114 118 120 122 124 125 130 134 136 137 138 141 143 144 145 151 152 156 157 158 160 166 168 169 174 175 176 177 178 184 187 188 193 195 201 205 208 210 211 212 213 215 216 222 225 230 232 233 234 236 242 244 246 249 252 253 254 259 261 262 264 266 268 270 271 272 274 276 280 282 283 284 288 289 290 295 298 300
 ```
-##### Cluster extractions from the input `dcd` using the `mdx` tool:
-```bash
-CID=1
-while read line; do
-    echo $line > _clust.txt
-    mdx --top data/2lj5.pdb --traj data/2lj5.dcd --fframes _clust.txt --out data/cluster_$CID.dcd
-    CID=$((CID+1))
-done < data/2lj5_clusters.txt
-rm _clust.txt
+#### Cluster extractions from the input `dcd` using the `mdx` tool:
+```
+$ quicksom_extract -h
 
+Extract clusters from a dcd file
+    quicksom_extract -p pdb_file -t dcd_file -c cluster_file
+```
+```
+$ quicksom_extract -p data/2lj5.pdb -t data/2lj5.dcd -c data/2lj5_clusters.txt
+
+PDB topology file: data/2lj5.pdb
+DCD trajectory file: data/2lj5.dcd
+Clusters file: data/2lj5_clusters.txt
+[...]
+ ObjectMolecule: read set 294 into state 294...
+ PyMOL not running, entering library mode (experimental)
+Getting state 6/294Getting state 16/294Getting state 34/294Getting state 36/294Getting state 40/294Getting state 47/294Getting state 49/294Getting state 53/294Getting state 57/294Getting state 59/294Getting state 67/294Getting state 76/294Getting state 81/294Getting state 100/294Getting state 111/294Getting state 115/294Getting state 117/294Getting state 128/294Getting state 135/294Getting state 149/294Getting state 164/294Getting state 167/294Getting state 182/294Getting state 186/294Getting state 192/294Getting state 194/294Getting state 196/294Getting state 198/294Getting state 199/294Getting state 202/294Getting state 203/294Getting state 204/294Getting state 207/294Getting state 219/294Getting state 224/294Getting state 238/294Getting state 243/294Getting state 257/294Getting state 263/294Getting state 269/294Getting state 273/294Getting state 281/294Getting state 294/294
 ```
 ```
 $ ls -v data/cluster_*.dcd
@@ -215,14 +231,14 @@ data/cluster_2.dcd
 data/cluster_3.dcd
 data/cluster_4.dcd
 ```
-##### Extraction of the SOM centroids from the input `dcd`
+#### Extraction of the SOM centroids from the input `dcd`
 ```bash
 grep -v "\-1" data/2lj5_codebook.txt > _codebook.txt
 mdx --top data/2lj5.pdb --traj data/2lj5.dcd --fframes _codebook.txt --out data/centroids.dcd
 rm _codebook.txt
 
 ```
-##### Plotting the U-matrix:
+#### Plotting the U-matrix:
 ```bash
 python3 -c 'import pickle
 import matplotlib.pyplot as plt
@@ -232,12 +248,12 @@ plt.savefig("data/umat_2lj5.png")
 '
 
 ```
-##### Flow analysis
+#### Flow analysis
 The flow of the trajectory can be projected onto the U-matrix using the following command:
 ```
 $ quicksom_flow -h
 
-usage: quicksom_flow [-h] [-s SOM_NAME] [-b BMUS] [-n] [--stride STRIDE]
+usage: quicksom_flow [-h] [-s SOM_NAME] [-b BMUS] [-n] [-m] [--stride STRIDE]
 
 Plot flow for time serie clustering.
 
@@ -247,5 +263,7 @@ optional arguments:
                         name of the SOM pickle to load
   -b BMUS, --bmus BMUS  BMU file to plot
   -n, --norm            Normalize flow as unit vectors
+  -m, --mean            Average the flow by the number of structure per SOM
+                        cell
   --stride STRIDE       Stride of the vectors field
 ```

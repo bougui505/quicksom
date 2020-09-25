@@ -164,7 +164,7 @@ into separate dcd files, creating a dcd with one centroid per fram or plotting o
 
 #### Cluster assignment of input data points:
 EOF
-runcmd "quicksom_predict -i data/2lj5.npy -o data/2lj5 -s data/som_2lj5.p"
+runcmd_null "quicksom_predict -i data/2lj5.npy -o data/2lj5 -s data/som_2lj5.p"
 cat << EOF
 This command generates 3 files:
 EOF
@@ -180,13 +180,8 @@ runcmd "head -3 data/2lj5_clusters.txt"
 cat << EOF
 #### Cluster extractions from the input \`dcd\` using the \`mdx\` tool:
 EOF
-runcmd_null 'CID=1
-while read line; do
-    echo $line > _clust.txt
-    mdx --top data/2lj5.pdb --traj data/2lj5.dcd --fframes _clust.txt --out data/cluster_$CID.dcd
-    CID=$((CID+1))
-done < data/2lj5_clusters.txt
-rm _clust.txt'
+runcmd 'quicksom_extract -h'
+runcmd_cut 'quicksom_extract -p data/2lj5.pdb -t data/2lj5.dcd -c data/2lj5_clusters.txt'
 runcmd "ls -v data/cluster_*.dcd"
 cat << EOF
 #### Extraction of the SOM centroids from the input \`dcd\`
