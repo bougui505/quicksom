@@ -203,3 +203,8 @@ cat << EOF
 The flow of the trajectory can be projected onto the U-matrix using the following command:
 EOF
 runcmd "quicksom_flow -h"
+
+cat << EOF
+#### Data projection
+EOF
+runcmd "quicksom_project -h"

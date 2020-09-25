@@ -260,3 +260,18 @@ optional arguments:
                         cell
   --stride STRIDE       Stride of the vectors field
 ```
+#### Data projection
+```
+$ quicksom_project -h
+
+usage: quicksom_project [-h] [-s SOM_NAME] [-b BMUS] -d DATA
+
+Plot flow for time serie clustering.
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -s SOM_NAME, --som_name SOM_NAME
+                        name of the SOM pickle to load
+  -b BMUS, --bmus BMUS  BMU file to plot
+  -d DATA, --data DATA  Data file to project
+```
