@@ -39,6 +39,7 @@ The implementation makes possible the use of a GPU if available for faster compu
 It follows the scikit package semantics for training and usage of the model.
 It also includes runnable scripts to avoid coding.
 
+![U-matrix](figs/flow_cluster.pdf)
 EOF
 
 cat << EOF
