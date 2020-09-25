@@ -265,7 +265,7 @@ optional arguments:
 ```
 With this toy example, we get the following plot:
 
-![U-matrix](https://raw.githubusercontent.com/bougui505/quicksom/master/figs/flow_cluster.png)
+![U-matrix](https://raw.githubusercontent.com/bougui505/quicksom/master/figs/flow_test.png)
 #### Data projection
 ```
 $ quicksom_project -h
