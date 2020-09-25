@@ -209,7 +209,7 @@ runcmd "quicksom_flow -h"
 cat << EOF
 With this toy example, we get the following plot:
 
-![U-matrix](https://raw.githubusercontent.com/bougui505/quicksom/master/figs/flow_cluster.png)
+![U-matrix](https://raw.githubusercontent.com/bougui505/quicksom/master/figs/flow_test.png)
 EOF
 
 cat << EOF
