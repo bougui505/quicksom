@@ -212,16 +212,9 @@ $ quicksom_extract -h
 Extract clusters from a dcd file
     quicksom_extract -p pdb_file -t dcd_file -c cluster_file
 ```
-```
-$ quicksom_extract -p data/2lj5.pdb -t data/2lj5.dcd -c data/2lj5_clusters.txt
+```bash
+quicksom_extract -p data/2lj5.pdb -t data/2lj5.dcd -c data/2lj5_clusters.txt
 
-PDB topology file: data/2lj5.pdb
-DCD trajectory file: data/2lj5.dcd
-Clusters file: data/2lj5_clusters.txt
-[...]
- ObjectMolecule: read set 294 into state 294...
- PyMOL not running, entering library mode (experimental)
-Getting state 6/294Getting state 16/294Getting state 34/294Getting state 36/294Getting state 40/294Getting state 47/294Getting state 49/294Getting state 53/294Getting state 57/294Getting state 59/294Getting state 67/294Getting state 76/294Getting state 81/294Getting state 100/294Getting state 111/294Getting state 115/294Getting state 117/294Getting state 128/294Getting state 135/294Getting state 149/294Getting state 164/294Getting state 167/294Getting state 182/294Getting state 186/294Getting state 192/294Getting state 194/294Getting state 196/294Getting state 198/294Getting state 199/294Getting state 202/294Getting state 203/294Getting state 204/294Getting state 207/294Getting state 219/294Getting state 224/294Getting state 238/294Getting state 243/294Getting state 257/294Getting state 263/294Getting state 269/294Getting state 273/294Getting state 281/294Getting state 294/294
 ```
 ```
 $ ls -v data/cluster_*.dcd
