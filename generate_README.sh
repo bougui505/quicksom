@@ -39,7 +39,9 @@ The implementation makes possible the use of a GPU if available for faster compu
 It follows the scikit package semantics for training and usage of the model.
 It also includes runnable scripts to avoid coding.
 
-![U-matrix](figs/flow_cluster.pdf)
+Example of a MD clustering using \`quicksom\`:
+
+![U-matrix](https://raw.githubusercontent.com/bougui505/quicksom/master/figs/flow_cluster.png)
 EOF
 
 cat << EOF
@@ -204,6 +206,11 @@ cat << EOF
 The flow of the trajectory can be projected onto the U-matrix using the following command:
 EOF
 runcmd "quicksom_flow -h"
+cat << EOF
+With this toy example, we get the following plot:
+
+![U-matrix](https://raw.githubusercontent.com/bougui505/quicksom/master/figs/flow_cluster.png)
+EOF
 
 cat << EOF
 #### Data projection
