@@ -17,6 +17,7 @@ parser = argparse.ArgumentParser(description='Plot flow for time serie clusterin
 parser.add_argument("-s", "--som_name", default='som.p', help="name of the SOM pickle to load")
 parser.add_argument("-b", "--bmus", default='out_bmus.txt', help="BMU file to plot")
 parser.add_argument("-d", "--data", required=True, help="Data file to project")
+parser.add_argument("--no_gui", default=False, action='store_true', help='Do not open graphical window')
 args, _ = parser.parse_known_args()
 
 som = pickle.load(open(args.som_name, 'rb'))
@@ -33,7 +34,11 @@ for i in range(dim1):
         if len(inds) > 0:
             projection[i, j] = data[inds].mean()
 projection[numpy.isinf(projection)] = numpy.nan
-numpy.save(f'{os.path.splitext(args.data)[0]}_project.npy', projection)
+outbasename = os.path.splitext(args.data)[0]
+numpy.save(f'{outbasename}_project.npy', projection)
 plt.matshow(projection)
 plt.colorbar()
-plt.show()
+if args.no_gui:
+    plt.savefig(f'{outbasename}_project.png')
+else:
+    plt.show()
