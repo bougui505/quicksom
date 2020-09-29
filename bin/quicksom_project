@@ -24,7 +24,7 @@ bmus = numpy.genfromtxt(args.bmus, usecols=(0, 1))
 data = numpy.genfromtxt(args.data)
 npts = bmus.shape[0]
 dim1, dim2 = som.m, som.n
-projection = numpy.zeros((dim1, dim2))
+projection = numpy.ones((dim1, dim2)) * numpy.inf
 for i in range(dim1):
     sys.stdout.write(f'{i+1}/{dim1}\r')
     sys.stdout.flush()
@@ -32,7 +32,7 @@ for i in range(dim1):
         inds = numpy.where((bmus == [i, j]).all(axis=1))[0]
         if len(inds) > 0:
             projection[i, j] = data[inds].mean()
-projection[projection == 0] = numpy.nan
+projection[numpy.isinf(projection)] = numpy.nan
 numpy.save(f'{os.path.splitext(args.data)[0]}_project.npy', projection)
 plt.matshow(projection)
 plt.colorbar()
