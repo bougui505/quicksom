@@ -32,6 +32,7 @@ for i in range(dim1):
         inds = numpy.where((bmus == [i, j]).all(axis=1))[0]
         if len(inds) > 0:
             projection[i, j] = data[inds].mean()
+projection[projection == 0] = numpy.nan
 numpy.save(f'{os.path.splitext(args.data)[0]}_project.npy', projection)
 plt.matshow(projection)
 plt.colorbar()
