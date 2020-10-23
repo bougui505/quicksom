@@ -17,11 +17,17 @@ parser.add_argument('--dcd', dest='dcd', type=str,
                     help='DCD trajectory file', required=True)
 parser.add_argument('--select', dest='selection', type=str,
                     help='Atoms to select', required=True)
+parser.add_argument('--select_align', dest='select_align', type=str,
+                    help='Atoms to select for structural alignment', required=False)
 args = parser.parse_args()
 
 cmd.load(args.pdb, object='mystructure')
 cmd.load_traj(args.dcd, state=0)
-rmsds = cmd.intra_fit(args.selection)
+if args.select_align is None:
+    args.select_align = args.selection
+print(f"Aligning structures on: {args.select_align}")
+rmsds = cmd.intra_fit(args.select_align)
+print(f"Extracting coordinates for {args.selection}")
 natoms = cmd.select(args.selection)
 nstates = cmd.count_states('mystructure')
 coords = cmd.get_coords(args.selection, state=0)
