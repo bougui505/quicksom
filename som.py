@@ -416,7 +416,7 @@ class SOM(nn.Module):
             self.reversed_mapping = {v: k for k, v in self.mapping.items()}
             umat = uumat
         else:
-            self.mapping = {(i, j): (i, j) for (i, j) in itertools.product(range(50), range(50))}
+            self.mapping = {(i, j): (i, j) for (i, j) in itertools.product(range(self.m), range(self.n))}
             self.reversed_mapping = {v: k for k, v in self.mapping.items()}
             self.uumat = umat
 
