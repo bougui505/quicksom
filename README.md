@@ -91,7 +91,7 @@ directly in your analysis pipelines :
 import pickle
 import numpy
 import torch
-from som import SOM
+from quicksom.som import SOM
 
 # Get data
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
