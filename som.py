@@ -509,7 +509,7 @@ class SOM(nn.Module):
         wheel = Wheel(self, click, ax=ax)
 
         if autocluster:
-            self.clusters_user = self.cluster()
+            self.clusters_user = self.cluster() + 1
         if self.clusters_user is not None:
             wheel.clusters = self.clusters_user
             wheel.expand_clusters()
