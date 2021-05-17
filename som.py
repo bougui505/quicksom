@@ -467,7 +467,7 @@ class SOM(nn.Module):
         self.cluster_att = labels.flatten()
         return labels
 
-    def manual_cluster(self):
+    def manual_cluster(self, autocluster=False):
         from .somgui import Wheel, Click
 
         fig, ax = plt.subplots(figsize=(8, 10))
@@ -478,6 +478,8 @@ class SOM(nn.Module):
         fig.canvas.mpl_connect('button_press_event', click)
         wheel = Wheel(self, click, ax=ax)
 
+        if autocluster:
+            self.clusters_user = self.cluster()
         if self.clusters_user is not None:
             wheel.clusters = self.clusters_user
             wheel.expand_clusters()
