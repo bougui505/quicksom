@@ -39,6 +39,7 @@
 import pickle
 from sklearn.manifold import MDS
 import matplotlib.pyplot as plt
+import numpy as np
 
 if __name__ == '__main__':
     import argparse
@@ -47,6 +48,7 @@ if __name__ == '__main__':
     # parser.add_argument(name or flags...[, action][, nargs][, const][, default][, type][, choices][, required][, help][, metavar][, dest])
     parser.add_argument('-i', '--in_name', help='name of the som to load', type=str, default='som.p')
     parser.add_argument('--plot', help='Plot the resulting MDS', action='store_true')
+    parser.add_argument('--rmsd', help='Scale the axis to RMSD unit', action='store_true')
     args = parser.parse_args()
 
     som = pickle.load(open(args.in_name, 'rb'))
@@ -55,9 +57,16 @@ if __name__ == '__main__':
         som.mds = embedding.fit_transform(som.all_to_all_dist)
         som.mds -= som.mds.min(axis=0)
         pickle.dump(som, open(args.in_name, 'wb'))
+    if args.rmsd:
+        n_atoms = som.centroids.shape[1] // 3
+        print(f'number of atoms: {n_atoms}')
+        som.mds /= np.sqrt(n_atoms)
+        plt.xlabel('RMSD (Å)')
+        plt.ylabel('RMSD (Å)')
     if args.plot:
         cm = plt.cm.get_cmap('coolwarm')
         plt.gca().set_aspect('equal', adjustable='box')
         plt.scatter(som.mds[:, 0], som.mds[:, 1], s=2, c=1 - som.umat.flatten(), cmap=cm)
         cbar = plt.colorbar(label='density')
+        plt.grid()
         plt.show()
