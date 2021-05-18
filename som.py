@@ -303,7 +303,8 @@ class SOM(nn.Module):
                 if not step % print_each:
                     print(f'{iter_no + 1}/{n_iter}: {batch_size * (counter + 1)}/{len(samples)} '
                           f'| alpha: {self.alpha_op:4f} | sigma: {self.sigma_op:4f} '
-                          f'| error: {error:4f} | time {time.perf_counter() - start:4f}')
+                          f'| error: {error:4f} | time {time.perf_counter() - start:4f}',
+                          flush=True)
                 step += 1
         self.compute_umat()
         self.compute_all_dists()
