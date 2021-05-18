@@ -53,8 +53,11 @@ if __name__ == '__main__':
     if not hasattr(som, 'mds'):
         embedding = MDS(n_components=2, dissimilarity='precomputed', n_jobs=-1)
         som.mds = embedding.fit_transform(som.all_to_all_dist)
+        som.mds -= som.mds.min(axis=0)
         pickle.dump(som, open(args.in_name, 'wb'))
     if args.plot:
-        plt.scatter(som.mds[:, 0], som.mds[:, 1], s=2, c=som.umat.flatten())
-        plt.colorbar()
+        cm = plt.cm.get_cmap('coolwarm')
+        plt.gca().set_aspect('equal', adjustable='box')
+        plt.scatter(som.mds[:, 0], som.mds[:, 1], s=2, c=1 - som.umat.flatten(), cmap=cm)
+        cbar = plt.colorbar(label='density')
         plt.show()
