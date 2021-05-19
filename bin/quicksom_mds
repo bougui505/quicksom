@@ -66,7 +66,9 @@ if __name__ == '__main__':
     if args.plot:
         cm = plt.cm.get_cmap('coolwarm')
         plt.gca().set_aspect('equal', adjustable='box')
-        plt.scatter(som.mds[:, 0], som.mds[:, 1], s=2, c=1 - som.umat.flatten(), cmap=cm)
-        cbar = plt.colorbar(label='density')
+        density = 1 - som.umat.flatten()
+        density /= density.sum()
+        plt.scatter(som.mds[:, 0], som.mds[:, 1], s=2, c=density, cmap=cm)
+        cbar = plt.colorbar(label='density', format='%.0e')
         plt.grid()
         plt.show()
