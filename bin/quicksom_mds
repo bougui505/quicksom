@@ -41,6 +41,46 @@ from sklearn.manifold import MDS
 import matplotlib.pyplot as plt
 import numpy as np
 
+
+def get_frame_id(x, y, bmus):
+    mds_coords = som.mds
+    dlist = np.linalg.norm(mds_coords - np.asarray([x, y]), axis=1)
+    ind = dlist.argmin()
+    bmus_ravel = np.ravel_multi_index((bmus[:, 0], bmus[:, 1]), (som.m, som.n))
+    frame_ids = np.where(bmus_ravel == ind)[0]
+    return frame_ids
+
+
+def display_conf(frame_ids, obj_name=None):
+    cmd.set('all_states', 0)
+    if obj_name is None:
+        obj_name = 'cluster'
+    cmd.delete('cluster')
+    for frame_id in frame_ids:
+        cmd.create(obj_name, 'traj', frame_id, -1)
+    cmd.disable('traj')
+    cmd.set('all_states', 1)
+
+
+class ConfViewer(object):
+    def __init__(self, bmus):
+        self.bmus = bmus
+
+    def view_conf(self, x, y):
+        display_conf(get_frame_id(x, y, self.bmus))
+
+
+def onclick(event):
+    """
+    Load trajectory frame when clicking the map
+    """
+    x, y = event.xdata, event.ydata
+    try:
+        confviewer.view_conf(x, y)
+    except NameError:
+        print(x, y)
+
+
 if __name__ == '__main__':
     import argparse
     # argparse.ArgumentParser(prog=None, usage=None, description=None, epilog=None, parents=[], formatter_class=argparse.HelpFormatter, prefix_chars='-', fromfile_prefix_chars=None, argument_default=None, conflict_handler='error', add_help=True, allow_abbrev=True, exit_on_error=True)
@@ -49,21 +89,38 @@ if __name__ == '__main__':
     parser.add_argument('-i', '--in_name', help='name of the som to load', type=str, default='som.p')
     parser.add_argument('--plot', help='Plot the resulting MDS', action='store_true')
     parser.add_argument('--rmsd', help='Scale the axis to RMSD unit', action='store_true')
+    pymol_options = parser.add_argument_group("Interactive Pymol session")
+    pymol_options.add_argument('--top', help='Trajectory topology file in pdb format', type=str)
+    pymol_options.add_argument('--traj', help='Trajectory file', type=str)
+    pymol_options.add_argument('--bmus', help='BMUS file', type=str)
     args = parser.parse_args()
 
+    ax_label = None
     som = pickle.load(open(args.in_name, 'rb'))
     if not hasattr(som, 'mds'):
         embedding = MDS(n_components=2, dissimilarity='precomputed', n_jobs=-1)
         som.mds = embedding.fit_transform(som.all_to_all_dist)
         som.mds -= som.mds.min(axis=0)
         pickle.dump(som, open(args.in_name, 'wb'))
+    if args.top is not None:
+        import pymol
+        from pymol import cmd
+        pymol.finish_launching()
+        # improve PyMOL performance for many-state objects and long movies.
+        cmd.set('defer_builds_mode', 3)
+        cmd.load(args.top, 'traj')
+        cmd.load_traj(args.traj, 'traj', state=1)
+        bmus = np.int_(np.genfromtxt(args.bmus, usecols=(0, 1)))
+        confviewer = ConfViewer(bmus)
     if args.rmsd:
         n_atoms = som.centroids.shape[1] // 3
         print(f'number of atoms: {n_atoms}')
         som.mds /= np.sqrt(n_atoms)
-        plt.xlabel('RMSD (Å)')
-        plt.ylabel('RMSD (Å)')
+        ax_label = 'RMSD (Å)'
     if args.plot:
+        fig = plt.figure()
+        plt.xlabel(ax_label)
+        plt.ylabel(ax_label)
         cm = plt.cm.get_cmap('coolwarm')
         plt.gca().set_aspect('equal', adjustable='box')
         density = 1 - som.umat.flatten()
@@ -71,4 +128,5 @@ if __name__ == '__main__':
         plt.scatter(som.mds[:, 0], som.mds[:, 1], s=2, c=density, cmap=cm)
         cbar = plt.colorbar(label='density', format='%.0e')
         plt.grid()
+        fig.canvas.mpl_connect('button_press_event', onclick)
         plt.show()
