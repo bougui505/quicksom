@@ -81,18 +81,36 @@ def onclick(event):
         print(x, y)
 
 
+def project(data, bmus):
+    n = som.m * som.n
+    projections = np.zeros(n)
+    counts = np.zeros(n)
+    for val, bmu in zip(data, bmus):
+        bmu = np.ravel_multi_index(bmu, (som.m, som.n))
+        projections[bmu] += val
+        counts[bmu] += 1
+    projections /= counts
+    return projections
+
+
 if __name__ == '__main__':
     import argparse
     # argparse.ArgumentParser(prog=None, usage=None, description=None, epilog=None, parents=[], formatter_class=argparse.HelpFormatter, prefix_chars='-', fromfile_prefix_chars=None, argument_default=None, conflict_handler='error', add_help=True, allow_abbrev=True, exit_on_error=True)
     parser = argparse.ArgumentParser(description='Project the som space onto a 2D space using Multi Dimensional Scaling')
     # parser.add_argument(name or flags...[, action][, nargs][, const][, default][, type][, choices][, required][, help][, metavar][, dest])
     parser.add_argument('-i', '--in_name', help='name of the som to load', type=str, default='som.p')
-    parser.add_argument('--plot', help='Plot the resulting MDS', action='store_true')
-    parser.add_argument('--rmsd', help='Scale the axis to RMSD unit', action='store_true')
+    parser.add_argument('--bmus', help='BMUS file', type=str)
+    plot_options = parser.add_argument_group("Plotting options")
+    plot_options.add_argument('--plot', help='Plot the resulting MDS', action='store_true')
+    plot_options.add_argument('--rmsd', help='Scale the axis to RMSD unit', action='store_true')
+    plot_options.add_argument('--cmap', help='Colormap to use (see: https://matplotlib.org/stable/tutorials/colors/colormaps.html)', type=str, default='coolwarm')
+    plot_options.add_argument('--clim', help='Colorbar limits', nargs='+', type=float)
+    project_options = parser.add_argument_group("Data projection options")
+    project_options.add_argument('--project', help='read data (1 data point per line) from the given file to project', type=str)
+    project_options.add_argument('--label', help='Label for the data projected', type=str)
     pymol_options = parser.add_argument_group("Interactive Pymol session")
     pymol_options.add_argument('--top', help='Trajectory topology file in pdb format', type=str)
     pymol_options.add_argument('--traj', help='Trajectory file', type=str)
-    pymol_options.add_argument('--bmus', help='BMUS file', type=str)
     args = parser.parse_args()
 
     ax_label = None
@@ -102,6 +120,11 @@ if __name__ == '__main__':
         som.mds = embedding.fit_transform(som.all_to_all_dist)
         som.mds -= som.mds.min(axis=0)
         pickle.dump(som, open(args.in_name, 'wb'))
+    if args.bmus is not None:
+        bmus = np.int_(np.genfromtxt(args.bmus, usecols=(0, 1)))
+    if args.project is not None:
+        toproject = np.genfromtxt(args.project)
+        projections = project(toproject, bmus)
     if args.top is not None:
         import pymol
         from pymol import cmd
@@ -110,7 +133,6 @@ if __name__ == '__main__':
         cmd.set('defer_builds_mode', 3)
         cmd.load(args.top, 'traj')
         cmd.load_traj(args.traj, 'traj', state=1)
-        bmus = np.int_(np.genfromtxt(args.bmus, usecols=(0, 1)))
         confviewer = ConfViewer(bmus)
     if args.rmsd:
         n_atoms = som.centroids.shape[1] // 3
@@ -121,12 +143,23 @@ if __name__ == '__main__':
         fig = plt.figure()
         plt.xlabel(ax_label)
         plt.ylabel(ax_label)
-        cm = plt.cm.get_cmap('coolwarm')
+        cm = plt.cm.get_cmap(args.cmap)
         plt.gca().set_aspect('equal', adjustable='box')
-        density = 1 - som.umat.flatten()
-        density /= density.sum()
-        plt.scatter(som.mds[:, 0], som.mds[:, 1], s=2, c=density, cmap=cm)
-        cbar = plt.colorbar(label='density', format='%.0e')
+        if args.project is None:
+            density = 1 - som.umat.flatten()
+            density /= density.sum()
+            plt.scatter(som.mds[:, 0], som.mds[:, 1], s=2, c=density, cmap=cm)
+            cbar = plt.colorbar(label='density', format='%.0e')
+        else:
+            plt.scatter(som.mds[:, 0], som.mds[:, 1], s=2, c=projections, cmap=cm)
+            cbar = plt.colorbar(label=args.label)
+        if args.clim is not None:
+            plt.clim(args.clim[0], args.clim[1])
+            cbarvals = cbar.get_ticks()
+            cbarvals = [f'{e:.2g}' for e in cbarvals]
+            cbarvals[0] = f'< {cbarvals[0]}'
+            cbarvals[-1] = f'> {cbarvals[-1]}'
+            cbar.ax.set_yticklabels(cbarvals)
         plt.grid()
         fig.canvas.mpl_connect('button_press_event', onclick)
         plt.show()
