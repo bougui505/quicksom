@@ -105,6 +105,7 @@ if __name__ == '__main__':
     plot_options.add_argument('--rmsd', help='Scale the axis to RMSD unit', action='store_true')
     plot_options.add_argument('--cmap', help='Colormap to use (see: https://matplotlib.org/stable/tutorials/colors/colormaps.html)', type=str, default='coolwarm')
     plot_options.add_argument('--clim', help='Colorbar limits', nargs='+', type=float)
+    plot_options.add_argument('--size', help='Size of the scatter dots', default=2, type=float)
     project_options = parser.add_argument_group("Data projection options")
     project_options.add_argument('--project', help='read data (1 data point per line) from the given file to project', type=str)
     project_options.add_argument('--label', help='Label for the data projected', type=str)
@@ -148,10 +149,10 @@ if __name__ == '__main__':
         if args.project is None:
             density = 1 - som.umat.flatten()
             density /= density.sum()
-            plt.scatter(som.mds[:, 0], som.mds[:, 1], s=2, c=density, cmap=cm)
+            plt.scatter(som.mds[:, 0], som.mds[:, 1], s=args.size, c=density, cmap=cm)
             cbar = plt.colorbar(label='density', format='%.0e')
         else:
-            plt.scatter(som.mds[:, 0], som.mds[:, 1], s=2, c=projections, cmap=cm)
+            plt.scatter(som.mds[:, 0], som.mds[:, 1], s=args.size, c=projections, cmap=cm)
             cbar = plt.colorbar(label=args.label)
         if args.clim is not None:
             plt.clim(args.clim[0], args.clim[1])
