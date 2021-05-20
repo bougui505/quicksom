@@ -146,13 +146,16 @@ if __name__ == '__main__':
         plt.ylabel(ax_label)
         cm = plt.cm.get_cmap(args.cmap)
         plt.gca().set_aspect('equal', adjustable='box')
+        density = 1 - som.umat.flatten()
+        density /= density.sum()
         if args.project is None:
-            density = 1 - som.umat.flatten()
-            density /= density.sum()
-            plt.scatter(som.mds[:, 0], som.mds[:, 1], s=args.size, c=density, cmap=cm)
+            mapping = density
+        else:
+            mapping = projections
+        plt.scatter(som.mds[:, 0], som.mds[:, 1], s=args.size, c=mapping, cmap=cm)
+        if args.project is None:
             cbar = plt.colorbar(label='density', format='%.0e')
         else:
-            plt.scatter(som.mds[:, 0], som.mds[:, 1], s=args.size, c=projections, cmap=cm)
             cbar = plt.colorbar(label=args.label)
         if args.clim is not None:
             plt.clim(args.clim[0], args.clim[1])
