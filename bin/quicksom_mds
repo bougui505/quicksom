@@ -106,6 +106,8 @@ if __name__ == '__main__':
     plot_options.add_argument('--cmap', help='Colormap to use (see: https://matplotlib.org/stable/tutorials/colors/colormaps.html)', type=str, default='coolwarm')
     plot_options.add_argument('--clim', help='Colorbar limits', nargs='+', type=float)
     plot_options.add_argument('--size', help='Size of the scatter dots', default=2, type=float)
+    plot_options.add_argument('--cluster', help='Color by cluster based on the given cluster file (one value per line with the cluster id)', type=str)
+    plot_options.add_argument('--cmaps', help='Colormaps to use for the cluster representation (See: https://matplotlib.org/stable/tutorials/colors/colormaps.html)', nargs='+', type=str)
     project_options = parser.add_argument_group("Data projection options")
     project_options.add_argument('--project', help='read data (1 data point per line) from the given file to project', type=str)
     project_options.add_argument('--label', help='Label for the data projected', type=str)
@@ -152,11 +154,46 @@ if __name__ == '__main__':
             mapping = density
         else:
             mapping = projections
-        plt.scatter(som.mds[:, 0], som.mds[:, 1], s=args.size, c=mapping, cmap=cm)
-        if args.project is None:
-            cbar = plt.colorbar(label='density', format='%.0e')
+        if args.cluster is None:
+            plt.scatter(som.mds[:, 0], som.mds[:, 1], s=args.size, c=mapping, cmap=cm)
         else:
-            cbar = plt.colorbar(label=args.label)
+            clusters = np.genfromtxt(args.cluster, dtype=str)
+            labels = np.unique(clusters)
+            bmus_labels = {}
+            for label in labels:
+                inds = np.where(clusters == label)[0]
+                bmus_label = bmus[inds]
+                bmus_label = np.ravel_multi_index((bmus_label[:, 0], bmus_label[:, 1]), (som.m, som.n))
+                bmus_label = np.unique(bmus_label)
+                bmus_labels[label] = set(bmus_label)
+            if args.cmaps is None:
+                cmaps = ['Reds', 'Greens', 'Blues']
+            else:
+                cmaps = args.cmaps
+            bmus_other = set(range(som.m * som.n))
+            for i, label in enumerate(labels):
+                bmus_label = bmus_labels[label]
+                other = set()
+                for other_label in (set(labels) - set([label])):
+                    other.update(bmus_labels[other_label])
+                bmus_select = bmus_label - other
+                bmus_other -= bmus_select
+                bmus_select = list(bmus_select)
+                mds_label = som.mds[bmus_select]
+                density_label = density[bmus_select]
+                plt.scatter(mds_label[:, 0], mds_label[:, 1], c=density_label, cmap=cmaps[i], s=args.size)
+                plt.scatter(0, 0, c=plt.cm.get_cmap(cmaps[i])(0.5), label=label, s=args.size)
+            bmus_other = list(bmus_other)
+            mds_other = som.mds[bmus_other]
+            density_other = density[bmus_other]
+            plt.scatter(mds_other[:, 0], mds_other[:, 1], c=density_other, cmap=cmaps[i + 1], s=args.size)
+            plt.scatter(0, 0, c=plt.cm.get_cmap(cmaps[i + 1])(0.5), label='overlap', s=args.size)
+            plt.legend()
+        if args.cluster is None:
+            if args.project is None:
+                cbar = plt.colorbar(label='density', format='%.0e')
+            else:
+                cbar = plt.colorbar(label=args.label)
         if args.clim is not None:
             plt.clim(args.clim[0], args.clim[1])
             cbarvals = cbar.get_ticks()
