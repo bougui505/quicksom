@@ -101,6 +101,7 @@ if __name__ == '__main__':
     # parser.add_argument(name or flags...[, action][, nargs][, const][, default][, type][, choices][, required][, help][, metavar][, dest])
     parser.add_argument('-i', '--in_name', help='name of the som to load', type=str, default='som.p')
     parser.add_argument('--bmus', help='BMUS file', type=str)
+
     plot_options = parser.add_argument_group("Plotting options")
     plot_options.add_argument('--plot', help='Plot the resulting MDS', action='store_true')
     plot_options.add_argument('--rmsd', help='Scale the axis to RMSD unit', action='store_true')
@@ -109,15 +110,19 @@ if __name__ == '__main__':
     plot_options.add_argument('--size', help='Size of the scatter dots', default=2, type=float)
     plot_options.add_argument('--cluster', help='Color by cluster based on the given cluster file (one value per line with the cluster id)', type=str)
     plot_options.add_argument('--cmaps', help='Colormaps to use for the cluster representation (See: https://matplotlib.org/stable/tutorials/colors/colormaps.html)', nargs='+', type=str)
+    plot_options.add_argument('--xylabels', help='Labels for the x and y axes', type=str)
+
     project_options = parser.add_argument_group("Data projection options")
     project_options.add_argument('--project', help='read data (1 data point per line) from the given file to project', type=str)
     project_options.add_argument('--label', help='Label for the data projected', type=str)
+
     pymol_options = parser.add_argument_group("Interactive Pymol session")
     pymol_options.add_argument('--top', help='Trajectory topology file in pdb format', type=str)
     pymol_options.add_argument('--traj', help='Trajectory file', type=str)
+
     args = parser.parse_args()
 
-    ax_label = None
+    ax_label = args.xylabels
     som = pickle.load(open(args.in_name, 'rb'))
     if not hasattr(som, 'mds'):
         embedding = MDS(n_components=2, dissimilarity='precomputed', n_jobs=-1)
