@@ -37,6 +37,7 @@
 #############################################################################
 
 import pickle
+import itertools
 from sklearn.manifold import MDS
 import matplotlib.pyplot as plt
 import numpy as np
@@ -167,9 +168,9 @@ if __name__ == '__main__':
                 bmus_label = np.unique(bmus_label)
                 bmus_labels[label] = set(bmus_label)
             if args.cmaps is None:
-                cmaps = ['Reds', 'Greens', 'Blues']
+                cmaps = itertools.cycle(['Reds', 'Greens', 'Blues'])
             else:
-                cmaps = args.cmaps
+                cmaps = itertools.cycle(args.cmaps)
             bmus_other = set(range(som.m * som.n))
             for i, label in enumerate(labels):
                 bmus_label = bmus_labels[label]
@@ -181,13 +182,15 @@ if __name__ == '__main__':
                 bmus_select = list(bmus_select)
                 mds_label = som.mds[bmus_select]
                 density_label = density[bmus_select]
-                plt.scatter(mds_label[:, 0], mds_label[:, 1], c=density_label, cmap=cmaps[i], s=args.size)
-                plt.scatter(0, 0, c=plt.cm.get_cmap(cmaps[i])(0.5), label=label, s=args.size)
+                cmap_ = cmaps.__next__()
+                plt.scatter(mds_label[:, 0], mds_label[:, 1], c=density_label, cmap=cmap_, s=args.size)
+                plt.scatter(0, 0, c=plt.cm.get_cmap(cmap_)(0.5), label=label, s=args.size)
             bmus_other = list(bmus_other)
             mds_other = som.mds[bmus_other]
             density_other = density[bmus_other]
-            plt.scatter(mds_other[:, 0], mds_other[:, 1], c=density_other, cmap=cmaps[i + 1], s=args.size)
-            plt.scatter(0, 0, c=plt.cm.get_cmap(cmaps[i + 1])(0.5), label='overlap', s=args.size)
+            cmap_ = cmaps.__next__()
+            plt.scatter(mds_other[:, 0], mds_other[:, 1], c=density_other, cmap=cmap_, s=args.size)
+            plt.scatter(0, 0, c=plt.cm.get_cmap(cmap_)(0.5), label='overlap', s=args.size)
             plt.legend()
         if args.cluster is None:
             if args.project is None:
