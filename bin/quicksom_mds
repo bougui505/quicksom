@@ -111,6 +111,7 @@ if __name__ == '__main__':
     plot_options.add_argument('--cluster', help='Color by cluster based on the given cluster file (one value per line with the cluster id)', type=str)
     plot_options.add_argument('--cmaps', help='Colormaps to use for the cluster representation (See: https://matplotlib.org/stable/tutorials/colors/colormaps.html)', nargs='+', type=str)
     plot_options.add_argument('--xylabels', help='Labels for the x and y axes', type=str)
+    plot_options.add_argument('--scaling', help='Scaling factor for the mds', type=float, default=1.)
 
     project_options = parser.add_argument_group("Data projection options")
     project_options.add_argument('--project', help='read data (1 data point per line) from the given file to project', type=str)
@@ -123,6 +124,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     ax_label = args.xylabels
+    scaling = args.scaling
     som = pickle.load(open(args.in_name, 'rb'))
     if not hasattr(som, 'mds'):
         embedding = MDS(n_components=2, dissimilarity='precomputed', n_jobs=-1)
@@ -146,8 +148,9 @@ if __name__ == '__main__':
     if args.rmsd:
         n_atoms = som.centroids.shape[1] // 3
         print(f'number of atoms: {n_atoms}')
-        som.mds /= np.sqrt(n_atoms)
+        scaling = 1. / np.sqrt(n_atoms)
         ax_label = 'RMSD (Å)'
+    som.mds *= scaling
     if args.plot:
         fig = plt.figure()
         plt.xlabel(ax_label)
