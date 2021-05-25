@@ -94,7 +94,7 @@ def project(data, bmus):
     return projections
 
 
-def rigid_bidy_fit(A, B):
+def rigid_body_fit(A, B):
     """
     A: Point cloud to align (shape: (natoms*3))
     B: references point cloud (shape: (nframes, natoms*3))
@@ -108,10 +108,25 @@ def rigid_bidy_fit(A, B):
     A_c = A - a_mean
     B_c = B - b_mean[:, None, :]
     # Covariance matrix
-    print(A_c.shape, B_c.shape)
+    # print(A_c.shape, B_c.shape)
     H = A_c.T.dot(B_c)
-    print(H.shape)
-
+    H = np.swapaxes(H, 0, 1)
+    # print(H.shape)
+    U, S, V = np.linalg.svd(H)
+    V = V.swapaxes(1, 2)
+    # print(U.shape, S.shape, V.shape)
+    # Rotation matrix
+    n = len(U)
+    R = np.asarray([V[i].dot(U[i].T) for i in range(n)])
+    # print(R.shape)
+    # Translation vector
+    # print(a_mean.shape, b_mean.shape)
+    a_mean_rot = np.asarray([R[i].dot(a_mean[None, :].T).T for i in range(n)])
+    t = b_mean[:, None, :] - a_mean_rot
+    # print(t.shape, A.shape)
+    A_out = np.asarray([R[i].dot(A.T).T for i in range(n)]) + t
+    # print(A_out.shape)
+    return A_out
 
 
 if __name__ == '__main__':
@@ -192,8 +207,12 @@ if __name__ == '__main__':
             cmd.load(args.ref, 'ref')
             coords_ref = cmd.get_coords('ref').flatten()
             n_atoms = int(coords_ref.size / 3)
-            rigid_bidy_fit(coords_ref, som.centroids)
-            rmsd_ref = np.sqrt(((som.centroids - coords_ref[None, ...])**2).sum(axis=1) / n_atoms)
+            nstates = len(som.centroids)
+            coords_aligned = rigid_body_fit(coords_ref, som.centroids.numpy())
+            coords_aligned = coords_aligned.reshape((nstates, -1))
+            rmsd_ref = np.sqrt(((som.centroids - coords_aligned)**2).sum(axis=1) / n_atoms)
+            # coords_ref = coords_aligned[rmsd_ref.argmin()]
+            # rmsd_ref = np.sqrt(((som.centroids - coords_ref[None, ...])**2).sum(axis=1) / n_atoms)
             mapping = rmsd_ref
             args.label = 'RMSD from reference (Å)'
             args.project = True
