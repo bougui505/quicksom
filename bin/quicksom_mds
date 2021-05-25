@@ -94,6 +94,26 @@ def project(data, bmus):
     return projections
 
 
+def rigid_bidy_fit(A, B):
+    """
+    A: Point cloud to align (shape: (natoms*3))
+    B: references point cloud (shape: (nframes, natoms*3))
+    """
+    natoms = A.size // 3
+    nframes = B.shape[0]
+    A = A.reshape((natoms, 3))
+    B = B.reshape((nframes, natoms, 3))
+    a_mean = A.mean(axis=0)
+    b_mean = B.mean(axis=1)
+    A_c = A - a_mean
+    B_c = B - b_mean[:, None, :]
+    # Covariance matrix
+    print(A_c.shape, B_c.shape)
+    H = A_c.T.dot(B_c)
+    print(H.shape)
+
+
+
 if __name__ == '__main__':
     import argparse
     # argparse.ArgumentParser(prog=None, usage=None, description=None, epilog=None, parents=[], formatter_class=argparse.HelpFormatter, prefix_chars='-', fromfile_prefix_chars=None, argument_default=None, conflict_handler='error', add_help=True, allow_abbrev=True, exit_on_error=True)
@@ -117,6 +137,7 @@ if __name__ == '__main__':
     project_options = parser.add_argument_group("Data projection options")
     project_options.add_argument('--project', help='read data (1 data point per line) from the given file to project', type=str)
     project_options.add_argument('--label', help='Label for the data projected', type=str)
+    project_options.add_argument('--ref', help='Compute the RMSD between the reference file given as a PDB and the MDS-SOM map', type=str)
 
     pymol_options = parser.add_argument_group("Interactive Pymol session")
     pymol_options.add_argument('--top', help='Trajectory topology file in pdb format', type=str)
@@ -165,6 +186,17 @@ if __name__ == '__main__':
             mapping = density
         else:
             mapping = projections
+        if args.ref is not None:
+            import pymol
+            from pymol import cmd
+            cmd.load(args.ref, 'ref')
+            coords_ref = cmd.get_coords('ref').flatten()
+            n_atoms = int(coords_ref.size / 3)
+            rigid_bidy_fit(coords_ref, som.centroids)
+            rmsd_ref = np.sqrt(((som.centroids - coords_ref[None, ...])**2).sum(axis=1) / n_atoms)
+            mapping = rmsd_ref
+            args.label = 'RMSD from reference (Å)'
+            args.project = True
         if args.groups is None:
             plt.scatter(som.mds[:, 0], som.mds[:, 1], s=args.size, c=mapping, cmap=cm)
         else:
