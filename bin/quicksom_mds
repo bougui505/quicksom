@@ -227,7 +227,7 @@ if __name__ == '__main__':
                 cbar = plt.colorbar(label='density', format='%.0e')
             else:
                 cbar = plt.colorbar(label=args.label)
-        else:
+        if args.subplots:
             fig.colorbar(im, ax=axes.ravel().tolist(), label='density', format='%.0e')
         if args.clim is not None:
             plt.clim(args.clim[0], args.clim[1])
