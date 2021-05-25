@@ -108,8 +108,9 @@ if __name__ == '__main__':
     plot_options.add_argument('--cmap', help='Colormap to use (see: https://matplotlib.org/stable/tutorials/colors/colormaps.html)', type=str, default='coolwarm')
     plot_options.add_argument('--clim', help='Colorbar limits', nargs='+', type=float)
     plot_options.add_argument('--size', help='Size of the scatter dots', default=2, type=float)
-    plot_options.add_argument('--cluster', help='Color by cluster based on the given cluster file (one value per line with the cluster id)', type=str)
-    plot_options.add_argument('--cmaps', help='Colormaps to use for the cluster representation (See: https://matplotlib.org/stable/tutorials/colors/colormaps.html)', nargs='+', type=str)
+    plot_options.add_argument('--groups', help='Color by group based on the given groups file (one value per line with the group id)', type=str)
+    plot_options.add_argument('--cmaps', help='Colormaps to use for the groups representation (See: https://matplotlib.org/stable/tutorials/colors/colormaps.html)', nargs='+', type=str)
+    plot_options.add_argument('--subplots', help='Create one subplot for each group', action='store_true')
     plot_options.add_argument('--xylabels', help='Labels for the x and y axes', type=str)
     plot_options.add_argument('--scaling', help='Scaling factor for the mds', type=float, default=1.)
 
@@ -152,25 +153,26 @@ if __name__ == '__main__':
         ax_label = 'RMSD (Å)'
     som.mds *= scaling
     if args.plot:
-        fig = plt.figure()
-        plt.xlabel(ax_label)
-        plt.ylabel(ax_label)
-        cm = plt.cm.get_cmap(args.cmap)
-        plt.gca().set_aspect('equal', adjustable='box')
+        if not args.subplots:
+            fig = plt.figure()
+            plt.xlabel(ax_label)
+            plt.ylabel(ax_label)
+            cm = plt.cm.get_cmap(args.cmap)
+            plt.gca().set_aspect('equal', adjustable='box')
         density = 1 - som.umat.flatten()
         density /= density.sum()
         if args.project is None:
             mapping = density
         else:
             mapping = projections
-        if args.cluster is None:
+        if args.groups is None:
             plt.scatter(som.mds[:, 0], som.mds[:, 1], s=args.size, c=mapping, cmap=cm)
         else:
-            clusters = np.genfromtxt(args.cluster, dtype=str)
-            labels = np.unique(clusters)
+            groups = np.genfromtxt(args.groups, dtype=str)
+            labels = np.unique(groups)
             bmus_labels = {}
             for label in labels:
-                inds = np.where(clusters == label)[0]
+                inds = np.where(groups == label)[0]
                 bmus_label = bmus[inds]
                 bmus_label = np.ravel_multi_index((bmus_label[:, 0], bmus_label[:, 1]), (som.m, som.n))
                 bmus_label = np.unique(bmus_label)
@@ -180,31 +182,53 @@ if __name__ == '__main__':
             else:
                 cmaps = itertools.cycle(args.cmaps)
             bmus_other = set(range(som.m * som.n))
+            if args.subplots:
+                nlabels = len(labels)
+                nrows = min(3, nlabels // 2)
+                ncols = int(np.ceil(nlabels / nrows))
+                fig, axes = plt.subplots(nrows, ncols, sharex='all', sharey='all')
             for i, label in enumerate(labels):
                 bmus_label = bmus_labels[label]
-                other = set()
-                for other_label in (set(labels) - set([label])):
-                    other.update(bmus_labels[other_label])
-                bmus_select = bmus_label - other
-                bmus_other -= bmus_select
-                bmus_select = list(bmus_select)
-                mds_label = som.mds[bmus_select]
-                density_label = density[bmus_select]
                 cmap_ = cmaps.__next__()
-                plt.scatter(mds_label[:, 0], mds_label[:, 1], c=density_label, cmap=cmap_, s=args.size)
-                plt.scatter(0, 0, c=plt.cm.get_cmap(cmap_)(0.5), label=label, s=args.size)
+                if not args.subplots:
+                    other = set()
+                    for other_label in (set(labels) - set([label])):
+                        other.update(bmus_labels[other_label])
+                    bmus_select = bmus_label - other
+                    bmus_other -= bmus_select
+                    bmus_select = list(bmus_select)
+                    mds_label = som.mds[bmus_select]
+                    density_label = density[bmus_select]
+                    plt.scatter(mds_label[:, 0], mds_label[:, 1], c=density_label, cmap=cmap_, s=args.size)
+                    plt.scatter(0, 0, c=plt.cm.get_cmap(cmap_)(0.5), label=label, s=args.size)
+                else:  # Subplot
+                    mds_label = som.mds[list(bmus_label)]
+                    density_label = density[list(bmus_label)]
+                    ax = axes.flat[i]
+                    # ax.axis('equal')
+                    im = ax.scatter(mds_label[:, 0], mds_label[:, 1], c=density_label,
+                                    cmap=args.cmap, s=args.size, vmin=density.min(),
+                                    vmax=density.max())
+                    ax.set_title(label)
             bmus_other = list(bmus_other)
             mds_other = som.mds[bmus_other]
             density_other = density[bmus_other]
             cmap_ = cmaps.__next__()
-            plt.scatter(mds_other[:, 0], mds_other[:, 1], c=density_other, cmap=cmap_, s=args.size)
-            plt.scatter(0, 0, c=plt.cm.get_cmap(cmap_)(0.5), label='overlap', s=args.size)
-            plt.legend()
-        if args.cluster is None:
+            if not args.subplots:
+                plt.scatter(mds_other[:, 0], mds_other[:, 1], c=density_other, cmap=cmap_, s=args.size)
+                plt.scatter(0, 0, c=plt.cm.get_cmap(cmap_)(0.5), label='overlap', s=args.size)
+                plt.legend()
+            else:
+                # require matplotlib v3.4 (see: https://stackoverflow.com/a/65135433/1679629)
+                fig.supxlabel(ax_label)
+                fig.supylabel(ax_label)
+        if args.groups is None:
             if args.project is None:
                 cbar = plt.colorbar(label='density', format='%.0e')
             else:
                 cbar = plt.colorbar(label=args.label)
+        else:
+            fig.colorbar(im, ax=axes.ravel().tolist(), label='density', format='%.0e')
         if args.clim is not None:
             plt.clim(args.clim[0], args.clim[1])
             cbarvals = cbar.get_ticks()
@@ -212,6 +236,6 @@ if __name__ == '__main__':
             cbarvals[0] = f'< {cbarvals[0]}'
             cbarvals[-1] = f'> {cbarvals[-1]}'
             cbar.ax.set_yticklabels(cbarvals)
-        plt.grid()
+        # plt.grid()
         fig.canvas.mpl_connect('button_press_event', onclick)
         plt.show()
