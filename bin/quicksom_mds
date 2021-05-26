@@ -58,7 +58,7 @@ def display_conf(frame_ids, obj_name=None):
         obj_name = 'cluster'
     cmd.delete('cluster')
     for frame_id in frame_ids:
-        cmd.create(obj_name, 'traj', frame_id, -1)
+        cmd.create(obj_name, 'traj', frame_id + 1, -1)
     cmd.disable('traj')
     cmd.set('all_states', 1)
 
