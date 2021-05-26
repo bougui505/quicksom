@@ -179,6 +179,7 @@ if __name__ == '__main__':
     project_options.add_argument('--project', help='read data (1 data point per line) from the given file to project', type=str)
     project_options.add_argument('--label', help='Label for the data projected', type=str)
     project_options.add_argument('--ref', help='Compute the RMSD between the reference file given as a PDB and the MDS-SOM map', type=str)
+    project_options.add_argument('--sel', help='Selection of atom for the reference structure', type=str)
 
     pymol_options = parser.add_argument_group("Interactive Pymol session")
     pymol_options.add_argument('--top', help='Trajectory topology file in pdb format', type=str)
@@ -231,7 +232,11 @@ if __name__ == '__main__':
             import pymol
             from pymol import cmd
             cmd.load(args.ref, 'ref')
-            coords_ref = cmd.get_coords('ref').flatten()
+            if args.sel is not None:
+                sel = f'ref and {args.sel}'
+            else:
+                sel = 'ref'
+            coords_ref = cmd.get_coords(sel).flatten()
             n_atoms = int(coords_ref.size / 3)
             nstates = len(som.centroids)
             coords_aligned = rigid_body_fit(coords_ref, som.centroids.numpy())
