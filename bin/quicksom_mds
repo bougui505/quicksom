@@ -129,6 +129,32 @@ def rigid_body_fit(A, B):
     return A_out
 
 
+def get_bmu_labels(groups, bmus):
+        labels = np.unique(groups)
+        bmus_labels = {}
+        for label in labels:
+            inds = np.where(groups == label)[0]
+            bmus_label = bmus[inds]
+            bmus_label = np.ravel_multi_index((bmus_label[:, 0], bmus_label[:, 1]), (som.m, som.n))
+            bmus_label = np.unique(bmus_label)
+            bmus_labels[label] = set(bmus_label)
+        return bmus_labels
+
+
+def get_overlaps(bmus_labels):
+    all_intersections = set()
+    for label1 in bmus_labels.keys():
+        bmus1 = bmus_labels[label1]
+        for label2 in set(bmus_labels.keys()) - set([label1, ]):
+            bmus2 = bmus_labels[label2]
+            bmus_inter = bmus1.intersection(bmus2)
+            all_intersections = all_intersections.union(bmus_inter)
+    for label in bmus_labels.keys():
+        bmus_labels[label] = bmus_labels[label] - all_intersections
+    bmus_labels['overlap'] = all_intersections
+    return bmus_labels
+
+
 if __name__ == '__main__':
     import argparse
     # argparse.ArgumentParser(prog=None, usage=None, description=None, epilog=None, parents=[], formatter_class=argparse.HelpFormatter, prefix_chars='-', fromfile_prefix_chars=None, argument_default=None, conflict_handler='error', add_help=True, allow_abbrev=True, exit_on_error=True)
@@ -144,7 +170,7 @@ if __name__ == '__main__':
     plot_options.add_argument('--clim', help='Colorbar limits', nargs='+', type=float)
     plot_options.add_argument('--size', help='Size of the scatter dots', default=2, type=float)
     plot_options.add_argument('--groups', help='Color by group based on the given groups file (one value per line with the group id)', type=str)
-    plot_options.add_argument('--cmaps', help='Colormaps to use for the groups representation (See: https://matplotlib.org/stable/tutorials/colors/colormaps.html)', nargs='+', type=str)
+    plot_options.add_argument('--colors', help='Colors to use for the group projection. The number of colors must be equal to the number of groups plus one (for the overlap between groups).', nargs='+', type=str)
     plot_options.add_argument('--subplots', help='Create one subplot for each group', action='store_true')
     plot_options.add_argument('--xylabels', help='Labels for the x and y axes', type=str)
     plot_options.add_argument('--scaling', help='Scaling factor for the mds', type=float, default=1.)
@@ -220,18 +246,13 @@ if __name__ == '__main__':
             plt.scatter(som.mds[:, 0], som.mds[:, 1], s=args.size, c=mapping, cmap=cm)
         else:
             groups = np.genfromtxt(args.groups, dtype=str)
-            labels = np.unique(groups)
-            bmus_labels = {}
-            for label in labels:
-                inds = np.where(groups == label)[0]
-                bmus_label = bmus[inds]
-                bmus_label = np.ravel_multi_index((bmus_label[:, 0], bmus_label[:, 1]), (som.m, som.n))
-                bmus_label = np.unique(bmus_label)
-                bmus_labels[label] = set(bmus_label)
-            if args.cmaps is None:
-                cmaps = itertools.cycle(['Reds', 'Greens', 'Blues'])
+            bmus_labels = get_bmu_labels(groups, bmus)
+            bmus_labels = get_overlaps(bmus_labels)
+            labels = list(bmus_labels.keys())
+            if args.colors is None:
+                colors = itertools.cycle([None, ])
             else:
-                cmaps = itertools.cycle(args.cmaps)
+                colors = itertools.cycle(args.colors)
             bmus_other = set(range(som.m * som.n))
             if args.subplots:
                 nlabels = len(labels)
@@ -239,19 +260,12 @@ if __name__ == '__main__':
                 ncols = int(np.ceil(nlabels / nrows))
                 fig, axes = plt.subplots(nrows, ncols, sharex='all', sharey='all')
             for i, label in enumerate(labels):
-                bmus_label = bmus_labels[label]
-                cmap_ = cmaps.__next__()
+                bmus_label = np.asarray(list(bmus_labels[label]))
+                color_ = colors.__next__()
                 if not args.subplots:
-                    other = set()
-                    for other_label in (set(labels) - set([label])):
-                        other.update(bmus_labels[other_label])
-                    bmus_select = bmus_label - other
-                    bmus_other -= bmus_select
-                    bmus_select = list(bmus_select)
-                    mds_label = som.mds[bmus_select]
-                    density_label = density[bmus_select]
-                    plt.scatter(mds_label[:, 0], mds_label[:, 1], c=density_label, cmap=cmap_, s=args.size)
-                    plt.scatter(0, 0, c=plt.cm.get_cmap(cmap_)(0.5), label=label, s=args.size)
+                    mds_label = som.mds[bmus_label]
+                    density_label = density[bmus_label]
+                    plt.scatter(mds_label[:, 0], mds_label[:, 1], c=color_, s=args.size, label=label, alpha=density_label / density_label.max())
                 else:  # Subplot
                     mds_label = som.mds[list(bmus_label)]
                     density_label = density[list(bmus_label)]
@@ -261,18 +275,14 @@ if __name__ == '__main__':
                                     cmap=args.cmap, s=args.size, vmin=density.min(),
                                     vmax=density.max())
                     ax.set_title(label)
-            bmus_other = list(bmus_other)
-            mds_other = som.mds[bmus_other]
-            density_other = density[bmus_other]
-            cmap_ = cmaps.__next__()
-            if not args.subplots:
-                plt.scatter(mds_other[:, 0], mds_other[:, 1], c=density_other, cmap=cmap_, s=args.size)
-                plt.scatter(0, 0, c=plt.cm.get_cmap(cmap_)(0.5), label='overlap', s=args.size)
-                plt.legend()
-            else:
+            if args.subplots:
                 # require matplotlib v3.4 (see: https://stackoverflow.com/a/65135433/1679629)
                 fig.supxlabel(ax_label)
                 fig.supylabel(ax_label)
+            else:
+                leg = plt.legend()
+                for lh in leg.legendHandles:
+                    lh.set_alpha(1)
         if args.groups is None:
             if args.project is None:
                 cbar = plt.colorbar(label='density', format='%.0e')
