@@ -40,7 +40,7 @@ else:
 codebook = numpy.asarray(som.codebook)
 codebook[codebook != -1] += 1
 numpy.savetxt(f"{os.path.splitext(args.out_name)[0]}_codebook.txt", codebook, fmt='%d')
-numpy.savetxt(f"{os.path.splitext(args.out_name)[0]}_bmus.txt", numpy.c_[som.bmus, som.error], fmt='%.4f')
+numpy.savetxt(f"{os.path.splitext(args.out_name)[0]}_bmus.txt", numpy.c_[som.bmus, som.error, predicted_clusts], fmt=['%d', '%d', '%.4g', '%d'], header='#bmu1 #bmu2 #error #cluster', comments='')
 with open(f"{os.path.splitext(args.out_name)[0]}_clusters.txt", 'w') as outfile:
     for cid in numpy.unique(predicted_clusts):
         if cid > 0:
