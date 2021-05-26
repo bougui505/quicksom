@@ -262,19 +262,20 @@ if __name__ == '__main__':
             for i, label in enumerate(labels):
                 bmus_label = np.asarray(list(bmus_labels[label]))
                 color_ = colors.__next__()
-                if not args.subplots:
-                    mds_label = som.mds[bmus_label]
-                    density_label = density[bmus_label]
-                    plt.scatter(mds_label[:, 0], mds_label[:, 1], c=color_, s=args.size, label=label, alpha=density_label / density_label.max())
-                else:  # Subplot
-                    mds_label = som.mds[list(bmus_label)]
-                    density_label = density[list(bmus_label)]
-                    ax = axes.flat[i]
-                    # ax.axis('equal')
-                    im = ax.scatter(mds_label[:, 0], mds_label[:, 1], c=density_label,
-                                    cmap=args.cmap, s=args.size, vmin=density.min(),
-                                    vmax=density.max())
-                    ax.set_title(label)
+                if len(bmus_label) > 0:
+                    if not args.subplots:
+                        mds_label = som.mds[bmus_label]
+                        density_label = density[bmus_label]
+                        plt.scatter(mds_label[:, 0], mds_label[:, 1], c=color_, s=args.size, label=label, alpha=density_label / density_label.max())
+                    else:  # Subplot
+                        mds_label = som.mds[list(bmus_label)]
+                        density_label = density[list(bmus_label)]
+                        ax = axes.flat[i]
+                        # ax.axis('equal')
+                        im = ax.scatter(mds_label[:, 0], mds_label[:, 1], c=density_label,
+                                        cmap=args.cmap, s=args.size, vmin=density.min(),
+                                        vmax=density.max())
+                        ax.set_title(label)
             if args.subplots:
                 # require matplotlib v3.4 (see: https://stackoverflow.com/a/65135433/1679629)
                 fig.supxlabel(ax_label)
