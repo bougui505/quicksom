@@ -38,9 +38,11 @@ else:
 
 # numpy.savetxt(args.out_name, predicted_clusts, fmt='%d')
 codebook = numpy.asarray(som.codebook)
+bmus_flatten = numpy.ravel_multi_index((numpy.int_(som.bmus[:, 0]), numpy.int_(som.bmus[:, 1])), (som.m, som.n))
+index_min_error = codebook[bmus_flatten]
+numpy.savetxt(f"{os.path.splitext(args.out_name)[0]}_bmus.txt", numpy.c_[som.bmus, som.error, numpy.arange(len(som.bmus)), index_min_error, predicted_clusts, bmus_flatten], fmt=['%d', '%d', '%.4g', '%d', '%d', '%d', '%d'], header=f'#bmu1 #bmu2 #error #index #index_min_error #cluster #bmu_flatten_{som.m}x{som.n}', comments='')
 codebook[codebook != -1] += 1
 numpy.savetxt(f"{os.path.splitext(args.out_name)[0]}_codebook.txt", codebook, fmt='%d')
-numpy.savetxt(f"{os.path.splitext(args.out_name)[0]}_bmus.txt", numpy.c_[som.bmus, som.error, numpy.arange(len(som.bmus)), predicted_clusts], fmt=['%d', '%d', '%.4g', '%d', '%d'], header='#bmu1 #bmu2 #error #index #cluster', comments='')
 with open(f"{os.path.splitext(args.out_name)[0]}_clusters.txt", 'w') as outfile:
     for cid in numpy.unique(predicted_clusts):
         if cid > 0:
