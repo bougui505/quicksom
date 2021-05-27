@@ -76,10 +76,11 @@ def onclick(event):
     Load trajectory frame when clicking the map
     """
     x, y = event.xdata, event.ydata
+    ind = np.linalg.norm(np.c_[x, y] - som.mds, axis=1).argmin()
     try:
         confviewer.view_conf(x, y)
+        print(x, y, mapping[ind])
     except NameError:
-        ind = np.linalg.norm(np.c_[x, y] - som.mds, axis=1).argmin()
         print(x, y, mapping[ind])
 
 
