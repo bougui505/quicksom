@@ -19,14 +19,16 @@ parser.add_argument('--select', dest='selection', type=str,
                     help='Atoms to select', required=True)
 parser.add_argument('--select_align', dest='select_align', type=str,
                     help='Atoms to select for structural alignment', required=False)
+parser.add_argument('--no-align', dest='align', help='Do not align the trajectory (default: align it)', action='store_false')
 args = parser.parse_args()
 
 cmd.load(args.pdb, object='mystructure')
 cmd.load_traj(args.dcd, state=0)
 if args.select_align is None:
     args.select_align = args.selection
-print(f"Aligning structures on: {args.select_align}")
-rmsds = cmd.intra_fit(args.select_align)
+if args.align:
+    print(f"Aligning structures on: {args.select_align}")
+    rmsds = cmd.intra_fit(args.select_align)
 print(f"Extracting coordinates for {args.selection}")
 natoms = cmd.select(args.selection)
 nstates = cmd.count_states('mystructure')

@@ -11,13 +11,16 @@ import argparse
 parser = argparse.ArgumentParser(description='All the indices are starting from 1.')
 # In/Out
 parser.add_argument("-i", "--in_name", default=None, help="name of the npy file to use")
-parser.add_argument("-o", "--out_name", default='out.txt', help="name of txt to dump")
+parser.add_argument("-o", "--out_name", help="name of txt to dump")
 parser.add_argument("-s", "--som_name", default='som.p', help="name of pickle to load")
 parser.add_argument("--recompute_cluster", default=False, action='store_true', help="if set, periodic topology is used")
 parser.add_argument("--batch", default=100, type=int, help='Batch size')
 parser.add_argument("--subset", default=False, action='store_true',
                     help="Use the user defined clusters instead of the expanded partition.")
 args, _ = parser.parse_known_args()
+
+if args.out_name is None:
+    args.out_name = os.path.splitext(args.in_name)[0]
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 som = pickle.load(open(args.som_name, 'rb'))
@@ -40,9 +43,15 @@ else:
 codebook = numpy.asarray(som.codebook)
 bmus_flatten = numpy.ravel_multi_index((numpy.int_(som.bmus[:, 0]), numpy.int_(som.bmus[:, 1])), (som.m, som.n))
 index_min_error = codebook[bmus_flatten]
-numpy.savetxt(f"{os.path.splitext(args.out_name)[0]}_bmus.txt", numpy.c_[som.bmus, som.error, numpy.arange(len(som.bmus)), index_min_error, predicted_clusts, bmus_flatten], fmt=['%d', '%d', '%.4g', '%d', '%d', '%d', '%d'], header=f'#bmu1 #bmu2 #error #index #index_min_error #cluster #bmu_flatten_{som.m}x{som.n}', comments='')
-codebook[codebook != -1] += 1
-numpy.savetxt(f"{os.path.splitext(args.out_name)[0]}_codebook.txt", codebook, fmt='%d')
+index = numpy.arange(len(som.bmus))
+out_arr = numpy.c_[som.bmus, som.error, index, index_min_error, predicted_clusts, bmus_flatten]
+out_fmt = ['%d', '%d', '%.4g', '%d', '%d', '%d', '%d']
+out_header = f'#bmu1 #bmu2 #error #index #index_min_error #cluster #bmu_flatten_{som.m}x{som.n}'
+numpy.savetxt(f"{os.path.splitext(args.out_name)[0]}_bmus.txt", out_arr,
+              fmt=out_fmt, header=out_header, comments='')
+out_arr_codebook = out_arr[index == index_min_error]
+numpy.savetxt(f"{os.path.splitext(args.out_name)[0]}_codebook.txt", out_arr_codebook,
+              fmt=out_fmt, header=out_header, comments='')
 with open(f"{os.path.splitext(args.out_name)[0]}_clusters.txt", 'w') as outfile:
     for cid in numpy.unique(predicted_clusts):
         if cid > 0:
