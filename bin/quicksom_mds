@@ -79,7 +79,8 @@ def onclick(event):
     try:
         confviewer.view_conf(x, y)
     except NameError:
-        print(x, y)
+        ind = np.linalg.norm(np.c_[x, y] - som.mds, axis=1).argmin()
+        print(x, y, mapping[ind])
 
 
 def project(data, bmus):
