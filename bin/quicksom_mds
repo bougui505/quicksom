@@ -180,6 +180,7 @@ if __name__ == '__main__':
     project_options.add_argument('--label', help='Label for the data projected', type=str)
     project_options.add_argument('--ref', help='Compute the RMSD between the reference file given as a PDB and the MDS-SOM map', type=str)
     project_options.add_argument('--sel', help='Selection of atom for the reference structure', type=str)
+    project_options.add_argument('--cluster', help='Project cluster data', action='store_true')
 
     pymol_options = parser.add_argument_group("Interactive Pymol session")
     pymol_options.add_argument('--top', help='Trajectory topology file in pdb format', type=str)
@@ -200,6 +201,11 @@ if __name__ == '__main__':
     if args.project is not None:
         toproject = np.genfromtxt(args.project)
         projections = project(toproject, bmus)
+    if args.cluster:
+        toproject = np.int_(np.genfromtxt(args.bmus, usecols=(5,)))
+        projections = project(toproject, bmus)
+        args.project = True
+        args.cmap = 'tab20c'
     if args.top is not None:
         import pymol
         from pymol import cmd
