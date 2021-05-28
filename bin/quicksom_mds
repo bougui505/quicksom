@@ -37,6 +37,7 @@
 #############################################################################
 
 import pickle
+import os
 import itertools
 from sklearn.manifold import MDS
 import matplotlib.pyplot as plt
@@ -180,7 +181,7 @@ if __name__ == '__main__':
     project_options = parser.add_argument_group("Data projection options")
     project_options.add_argument('--project', help='read data (1 data point per line) from the given file to project', type=str)
     project_options.add_argument('--label', help='Label for the data projected', type=str)
-    project_options.add_argument('--ref', help='Compute the RMSD between the reference file given as a PDB and the MDS-SOM map', type=str)
+    project_options.add_argument('--ref', help='Compute the RMSD between the reference file given as a PDB and the MDS-SOM map', type=str, nargs='+')
     project_options.add_argument('--sel', help='Selection of atom for the reference structure', type=str)
     project_options.add_argument('--cluster', help='Project cluster data', action='store_true')
 
@@ -239,22 +240,28 @@ if __name__ == '__main__':
         if args.ref is not None:
             import pymol
             from pymol import cmd
-            cmd.load(args.ref, 'ref')
-            if args.sel is not None:
-                sel = f'ref and {args.sel}'
-            else:
-                sel = 'ref'
-            coords_ref = cmd.get_coords(sel).flatten()
-            n_atoms = int(coords_ref.size / 3)
-            nstates = len(som.centroids)
-            coords_aligned = rigid_body_fit(coords_ref, som.centroids.numpy())
-            coords_aligned = coords_aligned.reshape((nstates, -1))
-            rmsd_ref = np.sqrt(((som.centroids - coords_aligned)**2).sum(axis=1) / n_atoms)
-            # coords_ref = coords_aligned[rmsd_ref.argmin()]
-            # rmsd_ref = np.sqrt(((som.centroids - coords_ref[None, ...])**2).sum(axis=1) / n_atoms)
-            mapping = rmsd_ref
-            args.label = 'RMSD from reference (Å)'
-            args.project = True
+            for i, ref in enumerate(args.ref):
+                cmd.load(ref, f'ref_{i}')
+                if args.sel is not None:
+                    sel = f'ref_{i} and {args.sel}'
+                else:
+                    sel = f'ref_{i}'
+                coords_ref = cmd.get_coords(sel).flatten()
+                n_atoms = int(coords_ref.size / 3)
+                nstates = len(som.centroids)
+                coords_aligned = rigid_body_fit(coords_ref, som.centroids.numpy())
+                coords_aligned = coords_aligned.reshape((nstates, -1))
+                rmsd_ref = np.sqrt(((som.centroids - coords_aligned)**2).sum(axis=1) / n_atoms)
+                min_coords = som.mds[rmsd_ref.argmin()]  # coords in the MDS map with minimal rmsd for ref_i
+                rmsd_min = rmsd_ref[rmsd_ref.argmin()]
+                plt.scatter(min_coords[0], min_coords[1], s=50 * args.size, marker='*', zorder=3, label=f'{os.path.splitext(ref)[0]}: {rmsd_min:.2f} Å')
+                # coords_ref = coords_aligned[rmsd_ref.argmin()]
+                # rmsd_ref = np.sqrt(((som.centroids - coords_ref[None, ...])**2).sum(axis=1) / n_atoms)
+            if len(args.ref) == 1:
+                mapping = rmsd_ref
+                args.label = 'RMSD from reference (Å)'
+                args.project = True
+            plt.legend(prop={'size': 10})
         if args.groups is None:
             plt.scatter(som.mds[:, 0], som.mds[:, 1], s=args.size, c=mapping, cmap=cm)
         else:
