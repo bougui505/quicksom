@@ -252,11 +252,18 @@ if __name__ == '__main__':
                 coords_aligned = rigid_body_fit(coords_ref, som.centroids.numpy())
                 coords_aligned = coords_aligned.reshape((nstates, -1))
                 rmsd_ref = np.sqrt(((som.centroids - coords_aligned)**2).sum(axis=1) / n_atoms)
-                min_coords = som.mds[rmsd_ref.argmin()]  # coords in the MDS map with minimal rmsd for ref_i
-                rmsd_min = rmsd_ref[rmsd_ref.argmin()]
-                plt.scatter(min_coords[0], min_coords[1], s=50 * args.size, marker='*', zorder=3, label=f'{os.path.splitext(ref)[0]}: {rmsd_min:.2f} Å')
+                # Compute RMSD from the unique orientation with minimal RMSD
                 # coords_ref = coords_aligned[rmsd_ref.argmin()]
                 # rmsd_ref = np.sqrt(((som.centroids - coords_ref[None, ...])**2).sum(axis=1) / n_atoms)
+                ###############
+                min_coords = som.mds[rmsd_ref.argmin()]  # coords in the MDS map with minimal rmsd for ref_i
+                rmsd_min = rmsd_ref[rmsd_ref.argmin()]
+                delta_rmsd = 0.1
+                rmsd_zone = (rmsd_ref <= rmsd_min + delta_rmsd)
+                zone_coords = som.mds[rmsd_zone]
+                color = plt.rcParams['axes.prop_cycle'].by_key()['color'][i]
+                plt.scatter(min_coords[0], min_coords[1], s=50 * args.size, c=color, marker='*', zorder=3, label=f'{os.path.splitext(ref)[0]}: {rmsd_min:.2f} Å')
+                plt.scatter(zone_coords[:, 0], zone_coords[:, 1], c=color, zorder=3, s=2 * args.size)
             if len(args.ref) == 1:
                 mapping = rmsd_ref
                 args.label = 'RMSD from reference (Å)'
