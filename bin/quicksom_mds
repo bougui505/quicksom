@@ -261,14 +261,16 @@ if __name__ == '__main__':
                 delta_rmsd = 0.1
                 rmsd_zone = (rmsd_ref <= rmsd_min + delta_rmsd)
                 zone_coords = som.mds[rmsd_zone]
-                color = plt.rcParams['axes.prop_cycle'].by_key()['color'][i]
-                plt.scatter(min_coords[0], min_coords[1], s=50 * args.size, c=color, marker='*', zorder=3, label=f'{os.path.splitext(ref)[0]}: {rmsd_min:.2f} Å')
-                plt.scatter(zone_coords[:, 0], zone_coords[:, 1], c=color, zorder=3, s=2 * args.size)
+                if len(args.ref) > 1:
+                    color = plt.rcParams['axes.prop_cycle'].by_key()['color'][i]
+                    plt.scatter(min_coords[0], min_coords[1], s=50 * args.size, c=color, marker='*', zorder=3, label=f'{os.path.splitext(ref)[0]}: {rmsd_min:.2f} Å')
+                    plt.scatter(zone_coords[:, 0], zone_coords[:, 1], c=color, zorder=3, s=2 * args.size)
             if len(args.ref) == 1:
                 mapping = rmsd_ref
                 args.label = 'RMSD from reference (Å)'
                 args.project = True
-            plt.legend(prop={'size': 10})
+            else:
+                plt.legend(prop={'size': 10})
         if args.groups is None:
             plt.scatter(som.mds[:, 0], som.mds[:, 1], s=args.size, c=mapping, cmap=cm)
         else:
