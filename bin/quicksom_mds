@@ -263,6 +263,7 @@ if __name__ == '__main__':
         if args.ref is not None:
             import pymol
             from pymol import cmd
+            cmd.feedback('disable', 'all', 'everything')
             som_to_dcd(args.top, som.centroids)  # This creates the somtraj PyMol object
             somsize = som.centroids.shape[0]
             for i, ref in enumerate(args.ref):
