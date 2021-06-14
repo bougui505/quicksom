@@ -158,6 +158,26 @@ def get_overlaps(bmus_labels):
     return bmus_labels
 
 
+def som_to_dcd(topology, smap, savetraj=False):
+    from pymol import cmd
+    import psico.fullinit
+    if smap.ndim == 3:
+        nx, ny, nz = smap.shape
+        smap = smap.reshape((nx * ny, nz))
+    n, nz = smap.shape
+    smap = smap.numpy()
+    cmd.reinitialize()
+    cmd.load(topology, 'somtraj')
+    # coords_top = cmd.get_coords('somtraj')
+    for i, somframe in enumerate(smap):
+        somframe = somframe.reshape((nz // 3, -1))
+        cmd.load_coords(list(somframe), 'somtraj', state=i + 1)
+        if i < n - 1:
+            cmd.create('somtraj', selection='somtraj', source_state=i + 1, target_state=i + 2)
+    if savetraj:
+        cmd.save_traj('somtraj.dcd', 'somtraj')
+
+
 if __name__ == '__main__':
     import argparse
     # argparse.ArgumentParser(prog=None, usage=None, description=None, epilog=None, parents=[], formatter_class=argparse.HelpFormatter, prefix_chars='-', fromfile_prefix_chars=None, argument_default=None, conflict_handler='error', add_help=True, allow_abbrev=True, exit_on_error=True)
@@ -186,8 +206,9 @@ if __name__ == '__main__':
     project_options.add_argument('--cluster', help='Project cluster data', action='store_true')
 
     pymol_options = parser.add_argument_group("Interactive Pymol session")
-    pymol_options.add_argument('--top', help='Trajectory topology file in pdb format', type=str)
+    pymol_options.add_argument('--top', help='Trajectory topology file in pdb format (for MD trajectory analysis only)', type=str)
     pymol_options.add_argument('--traj', help='Trajectory file', type=str)
+    pymol_options.add_argument('--savesomtraj', help='Save the som as a dcd trajectory', action='store_true')
 
     args = parser.parse_args()
 
@@ -209,7 +230,9 @@ if __name__ == '__main__':
         projections = project(toproject, bmus)
         args.project = True
         args.cmap = 'tab20c'
-    if args.top is not None:
+    if args.savesomtraj:
+        som_to_dcd(args.top, som.centroids, savetraj=True)
+    if args.top is not None and args.traj is not None:
         import pymol
         from pymol import cmd
         pymol.finish_launching()
