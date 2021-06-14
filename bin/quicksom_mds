@@ -263,18 +263,16 @@ if __name__ == '__main__':
         if args.ref is not None:
             import pymol
             from pymol import cmd
+            som_to_dcd(args.top, som.centroids)  # This creates the somtraj PyMol object
+            somsize = som.centroids.shape[0]
             for i, ref in enumerate(args.ref):
                 cmd.load(ref, f'ref_{i}')
                 if args.sel is not None:
                     sel = f'ref_{i} and {args.sel}'
                 else:
                     sel = f'ref_{i}'
-                coords_ref = cmd.get_coords(sel).flatten()
-                n_atoms = int(coords_ref.size / 3)
-                nstates = len(som.centroids)
-                coords_aligned = rigid_body_fit(coords_ref, som.centroids.numpy())
-                coords_aligned = coords_aligned.reshape((nstates, -1))
-                rmsd_ref = np.sqrt(((som.centroids - coords_aligned)**2).sum(axis=1) / n_atoms)
+                cmd.create('somtraj', sel, 1, somsize + i + 1)
+                rmsd_ref = np.asarray(cmd.intra_fit('somtraj', somsize + i + 1)[:somsize])
                 # Compute RMSD from the unique orientation with minimal RMSD
                 # coords_ref = coords_aligned[rmsd_ref.argmin()]
                 # rmsd_ref = np.sqrt(((som.centroids - coords_ref[None, ...])**2).sum(axis=1) / n_atoms)
