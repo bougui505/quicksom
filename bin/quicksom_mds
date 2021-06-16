@@ -240,6 +240,7 @@ if __name__ == '__main__':
         cmd.set('defer_builds_mode', 3)
         cmd.load(args.top, 'traj')
         cmd.load_traj(args.traj, 'traj', state=1)
+        cmd.set('auto_zoom', 'off')
         confviewer = ConfViewer(bmus)
     if args.rmsd:
         n_atoms = som.centroids.shape[1] // 3
