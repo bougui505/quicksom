@@ -158,24 +158,28 @@ def get_overlaps(bmus_labels):
     return bmus_labels
 
 
-def som_to_dcd(topology, smap, sel='all', savetraj=False):
+def som_to_dcd(topology, smap, sel='all', objname='somtraj', savetraj=False):
     from pymol import cmd
     import psico.fullinit
+    if sel is None:
+        sel = 'all'
     if smap.ndim == 3:
         nx, ny, nz = smap.shape
         smap = smap.reshape((nx * ny, nz))
     n, nz = smap.shape
     smap = smap.numpy()
     cmd.reinitialize()
-    cmd.load(topology, 'somtraj')
-    # coords_top = cmd.get_coords('somtraj')
+    cmd.load(topology, objname)
+    coords_top = cmd.get_coords(objname)
+    print(f'topology shape: {coords_top.shape}')
     for i, somframe in enumerate(smap):
         somframe = somframe.reshape((nz // 3, -1))
-        cmd.load_coords(list(somframe), f'somtraj and {sel}', state=i + 1)
+        print(f'Loading som frame {i} with shape {somframe.shape}')
+        cmd.load_coords(list(somframe), f'{objname} and {sel}', state=i + 1)
         if i < n - 1:
-            cmd.create('somtraj', selection=f'somtraj and {sel}', source_state=i + 1, target_state=i + 2)
+            cmd.create(objname, selection=f'{objname} and {sel}', source_state=i + 1, target_state=i + 2)
     if savetraj:
-        cmd.save_traj('somtraj.dcd', 'somtraj')
+        cmd.save_traj(f'{objname}.dcd', objname)
 
 
 if __name__ == '__main__':
@@ -206,6 +210,7 @@ if __name__ == '__main__':
     project_options.add_argument('--cluster', help='Project cluster data', action='store_true')
 
     pymol_options = parser.add_argument_group("Interactive Pymol session")
+    pymol_options.add_argument('--pymol', help='Open PyMol for Interactive visualization', action='store_true')
     pymol_options.add_argument('--top', help='Trajectory topology file in pdb format (for MD trajectory analysis only)', type=str)
     pymol_options.add_argument('--traj', help='Trajectory file', type=str)
     pymol_options.add_argument('--savesomtraj', help='Save the som as a dcd trajectory', action='store_true')
@@ -232,16 +237,22 @@ if __name__ == '__main__':
         args.cmap = 'tab20c'
     if args.savesomtraj:
         som_to_dcd(args.top, som.centroids, sel=args.sel, savetraj=True)
-    if args.top is not None and args.traj is not None:
+    if args.top is not None and args.pymol:
         import pymol
         from pymol import cmd
         pymol.finish_launching()
         # improve PyMOL performance for many-state objects and long movies.
         cmd.set('defer_builds_mode', 3)
-        cmd.load(args.top, 'traj')
-        cmd.load_traj(args.traj, 'traj', state=1)
-        cmd.set('auto_zoom', 'off')
-        confviewer = ConfViewer(bmus)
+        cmd.set('auto_zoom', 0)
+        if args.traj is not None:
+            cmd.load(args.top, 'traj')
+            cmd.load_traj(args.traj, 'traj', state=1)
+            confviewer = ConfViewer(bmus)
+        else:
+            som_to_dcd(args.top, som.centroids, sel=args.sel, objname='traj', savetraj=False)
+            inds = np.asarray(np.unravel_index(np.arange(som.m * som.n), (som.m, som.n))).T
+            confviewer = ConfViewer(inds)
+
     if args.rmsd:
         n_atoms = som.centroids.shape[1] // 3
         print(f'number of atoms: {n_atoms}')
