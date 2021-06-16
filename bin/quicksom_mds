@@ -332,6 +332,7 @@ if __name__ == '__main__':
                 nrows = min(3, nlabels // 2)
                 ncols = int(np.ceil(nlabels / nrows))
                 fig, axes = plt.subplots(nrows, ncols, sharex='all', sharey='all')
+            plt.scatter(som.mds[:, 0], som.mds[:, 1], s=args.size * 0.75, c='grey', cmap=cm, alpha=.75)
             for i, label in enumerate(labels):
                 bmus_label = np.asarray(list(bmus_labels[label]))
                 color_ = colors.__next__()
