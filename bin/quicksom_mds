@@ -272,6 +272,7 @@ if __name__ == '__main__':
         if args.project is None:
             mapping = density
         else:
+            plt.scatter(som.mds[:, 0], som.mds[:, 1], s=args.size * 0.75, c='grey', cmap=cm, alpha=.75)
             mapping = projections
         if args.ref is not None:
             import pymol
