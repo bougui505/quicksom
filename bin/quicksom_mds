@@ -192,6 +192,7 @@ if __name__ == '__main__':
 
     plot_options = parser.add_argument_group("Plotting options")
     plot_options.add_argument('--plot', help='Plot the resulting MDS', action='store_true')
+    plot_options.add_argument('--savefig', help='Save the figure to the given filename instead of showing it')
     plot_options.add_argument('--rmsd', help='Scale the axis to RMSD unit', action='store_true')
     plot_options.add_argument('--cmap', help='Colormap to use (see: https://matplotlib.org/stable/tutorials/colors/colormaps.html)', type=str, default='coolwarm')
     plot_options.add_argument('--clim', help='Colorbar limits', nargs='+', type=float)
@@ -374,4 +375,7 @@ if __name__ == '__main__':
             cbar.ax.set_yticklabels(cbarvals)
         # plt.grid()
         fig.canvas.mpl_connect('button_press_event', onclick)
-        plt.show()
+        if args.savefig is None:
+            plt.show()
+        else:
+            plt.savefig(args.savefig)
