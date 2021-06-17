@@ -168,7 +168,7 @@ def som_to_dcd(topology, smap, sel='all', objname='somtraj', savetraj=False):
         smap = smap.reshape((nx * ny, nz))
     n, nz = smap.shape
     smap = smap.numpy()
-    cmd.reinitialize()
+    # cmd.reinitialize()
     cmd.load(topology, objname)
     coords_top = cmd.get_coords(objname)
     print(f'topology shape: {coords_top.shape}')
