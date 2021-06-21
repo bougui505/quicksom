@@ -278,7 +278,8 @@ if __name__ == '__main__':
             import pymol
             from pymol import cmd
             cmd.feedback('disable', 'all', 'everything')
-            som_to_dcd(args.top, som.centroids, sel=args.sel)  # This creates the somtraj PyMol object
+            if 'traj' not in cmd.get_object_list():
+                som_to_dcd(args.top, som.centroids, sel=args.sel, objname='traj')  # This creates the traj PyMol object
             somsize = som.centroids.shape[0]
             for i, ref in enumerate(args.ref):
                 cmd.load(ref, f'ref_{i}')
@@ -286,8 +287,8 @@ if __name__ == '__main__':
                     sel = f'ref_{i} and {args.sel}'
                 else:
                     sel = f'ref_{i}'
-                cmd.create('somtraj', sel, 1, somsize + i + 1)
-                rmsd_ref = np.asarray(cmd.intra_fit('somtraj', somsize + i + 1)[:somsize])
+                cmd.create('traj', sel, 1, somsize + i + 1)
+                rmsd_ref = np.asarray(cmd.intra_fit('traj', somsize + i + 1)[:somsize])
                 # Compute RMSD from the unique orientation with minimal RMSD
                 # coords_ref = coords_aligned[rmsd_ref.argmin()]
                 # rmsd_ref = np.sqrt(((som.centroids - coords_ref[None, ...])**2).sum(axis=1) / n_atoms)
