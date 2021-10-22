@@ -265,13 +265,13 @@ class SOM(nn.Module):
         self.centroids = new_weights
         return bmu_loc, torch.mean(mindist)
 
-    def inference_call(self, x):
+    def inference_call(self, x, n_bmu=1):
         """
-                timing info : now most of the time is in pdist ~1e-3s and the rest is 0.2e-3
-                :param x:
-                :param it:
-                :return:
-                """
+        timing info : now most of the time is in pdist ~1e-3s and the rest is 0.2e-3
+        :param x:
+        :param it:
+        :return:
+        """
         # Compute distances from batch to centroids
         # Dimension needed is BS, 1(vector), dim
         x, batch_size = self.find_batchsize(x)
@@ -279,9 +279,16 @@ class SOM(nn.Module):
 
         # Find closest and retrieve the gaussian correlation matrix for each point in the batch
         # bmu_loc is BS, num points
-        mindist, bmu_index = torch.min(dists, -1)
-        bmu_loc = self.locations[bmu_index].reshape(batch_size, 2)
-        return bmu_loc, mindist
+        if n_bmu == 1:
+            mindist, bmu_index = torch.min(dists, -1)
+            bmu_loc = self.locations[bmu_index].reshape(batch_size, 2)
+            return bmu_loc, mindist
+        else:
+            # In that case, return the bmu indices.
+            idx = torch.argsort(dists, -1)
+            selected = idx[:, :, :n_bmu]
+            mindists = torch.take(dists, selected)
+            return selected.squeeze(), mindists
 
     def fit(self, samples, batch_size=20, n_iter=None, print_each=20):
         if self.alpha is None:
@@ -322,7 +329,7 @@ class SOM(nn.Module):
         errors = list()
 
         for i in range(n_batch + 1):
-            sys.stdout.write(f'{i+1}/{n_batch+1}\r')
+            sys.stdout.write(f'{i + 1}/{n_batch + 1}\r')
             sys.stdout.flush()
             batch = samples[i * batch_size:i * batch_size + batch_size]
             bmu_loc, error = self.inference_call(batch)
@@ -331,6 +338,53 @@ class SOM(nn.Module):
         errors = torch.cat(errors)
         errors = errors.cpu().numpy()
         return bmus, errors
+
+    def compute_error(self, samples, batch_size=100):
+        """
+        This is similar to predict, but we implement two quality measures instead of returning the prediction :
+        - quantization error is the error we usually use : the average distance between a sample and its bmu
+        - topological error is the rate at which the two first BMU of a point are not adjacent in the map.
+
+        Batch the prediction to avoid memory overloading
+        """
+        batch_size = min(batch_size, len(samples))
+        # Avoid empty batches
+        n_batch = (len(samples) - 1) // batch_size
+
+        bmus = np.zeros((len(samples), 2))
+        errors = list()
+
+        for i in range(n_batch + 1):
+            sys.stdout.write(f'{i + 1}/{n_batch + 1}\r')
+            sys.stdout.flush()
+            batch = samples[i * batch_size:i * batch_size + batch_size]
+            bmu_loc, error = self.inference_call(batch, n_bmu=2)
+            bmus[i * batch_size:i * batch_size + batch_size] = bmu_loc.cpu().numpy()
+            errors.append(error)
+        errors = torch.cat(errors)
+        errors = errors.cpu().numpy()
+        quantization_error = np.mean(errors[:, :, 0])
+        topo_dists = np.array([self.distance_mat[int(first), int(second)] for first, second in bmus])
+        topo_error = np.sum(topo_dists > 1) / len(topo_dists)
+        print(f'On these samples, the quantization error is {quantization_error:1f} '
+              f'and the topological error rate is {topo_error:1f}')
+        return quantization_error, topo_error
+
+    def plot_component_plane(self, plane, savefig=None, show=True):
+        """
+        Get component plane plot : The value of each dimension for each centroid
+        """
+        smap = self.centroids.cpu().numpy().reshape((self.m, self.n, -1))
+        assert 0 <= plane < self.dim
+        component_plane = smap[:, :, plane]
+
+        plt.matshow(component_plane)
+        plt.colorbar()
+        if savefig is not None:
+            plt.savefig(savefig)
+        if show:
+            plt.show()
+        plt.clf()
 
     @staticmethod
     def _unfold(umat, adj):
