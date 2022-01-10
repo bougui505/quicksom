@@ -82,7 +82,13 @@ def onclick(event):
         confviewer.view_conf(x, y)
         print(x, y, mapping[ind])
     except NameError:
-        print(x, y, mapping[ind])
+        frameid = get_frame_id(x, y, bmus)
+        # print(x, y, mapping[ind], frameid[0])
+        print()
+        print("x:", x)
+        print("y:", y)
+        print("mapping:", mapping[ind])
+        print("frames:", " ".join([f"{e:d}" for e in frameid]))
 
 
 def project(data, bmus, som):
