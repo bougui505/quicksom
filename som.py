@@ -82,6 +82,7 @@ class SOM(nn.Module):
     :param device: the torch device to create the SOM onto. This can be modified using the to() method
     :param precompute: Speedup for initialization. Creates a little overhead for very small trainings
     :param periodic: Boolean to use a periodic topology
+    :param metric: takes as input two torch arrays (n,p) and (m,p) and returns a distance matrix (n,m)
     :param p_norm: p value for the p-norm distance to calculate between each vector pair for torch.cdist
      """
 
@@ -93,6 +94,7 @@ class SOM(nn.Module):
                  device='cpu',
                  precompute=True,
                  periodic=False,
+                 metric=None,
                  p_norm=2):
 
         # topology of the som
@@ -102,9 +104,13 @@ class SOM(nn.Module):
         self.grid_size = m * n
         self.dim = dim
         self.periodic = periodic
+        self.p_norm = p_norm
+        if metric is None:
+            self.metric = lambda x, y: torch.cdist(x, y, p=self.p_norm)
+        else:
+            self.metric = metric
 
         # optimization parameters
-        self.p_norm = p_norm
         self.sched = sched
         self.niter = niter
         if alpha is not None:
@@ -226,7 +232,7 @@ class SOM(nn.Module):
 
         # Compute distances from batch to centroids
         x, batch_size = self.find_batchsize(x)
-        dists = torch.cdist(x, self.centroids, p=self.p_norm)
+        dists = self.metric(x, self.centroids)
 
         # Find closest and retrieve the gaussian correlation matrix for each point in the batch
         # bmu_loc is BS, num points
@@ -275,7 +281,7 @@ class SOM(nn.Module):
         # Compute distances from batch to centroids
         # Dimension needed is BS, 1(vector), dim
         x, batch_size = self.find_batchsize(x)
-        dists = torch.cdist(x, self.centroids, p=self.p_norm)
+        dists = self.metric(x, self.centroids)
 
         # Find closest and retrieve the gaussian correlation matrix for each point in the batch
         # bmu_loc is BS, num points
@@ -420,8 +426,7 @@ class SOM(nn.Module):
             uumat[v[0], v[1]] = umat[k[0], k[1]]
         return uumat, mapping
 
-    @staticmethod
-    def _get_umat(smap, shape=None, rmsd=False, return_adjacency=False, periodic=True):
+    def _get_umat(self, smap, shape=None, rmsd=False, return_adjacency=False, periodic=True):
         """
         Compute the U-matrix based on a map of centroids and their connectivity.
         """
@@ -468,12 +473,14 @@ class SOM(nn.Module):
             else:
                 neighbors = tuple(np.asarray(neighbor_dim2_grid(point, shape), dtype='int').T)
 
-            cdist = scipy.spatial.distance.cdist(smap[neighbors], neuron[None], metric='euclidean')
-            umatrix[point] = cdist.mean()
+            smap_torch, neuron_torch = torch.from_numpy(smap[neighbors]), torch.from_numpy(neuron[None])
+            torch_cdists = self.metric(smap_torch, neuron_torch)
+            cdists = torch_cdists.numpy()
+            umatrix[point] = cdists.mean()
 
             adjmat['row'].extend([np.ravel_multi_index(point, shape), ] * len(neighbors[0]))
             adjmat['col'].extend(np.ravel_multi_index(neighbors, shape))
-            adjmat['data'].extend(cdist[:, 0])
+            adjmat['data'].extend(cdists[:, 0])
         if rmsd:
             natoms = smap.shape[-1] / 3.
             umatrix /= natoms
@@ -553,11 +560,12 @@ class SOM(nn.Module):
         return labels
 
     def manual_cluster(self, autocluster=False):
-        from .somgui import Wheel, Click
+        # from .somgui import Wheel, Click
 
         fig, ax = plt.subplots(figsize=(8, 10))
         cax = ax.matshow(self.umat)
         fig.colorbar(cax)
+        plt.show()
 
         click = Click(ax=ax)
         fig.canvas.mpl_connect('button_press_event', click)
@@ -612,7 +620,6 @@ class SOM(nn.Module):
 
 if __name__ == '__main__':
     pass
-
     # Prepare data
     max_points = 5000
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -625,7 +632,7 @@ if __name__ == '__main__':
     X = X.to(device)
 
     # Create SOM
-    n = 3
+    n = 10
     somsize = n ** 2
     nsamples = X.shape[0]
     dim = X.shape[1]
