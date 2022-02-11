@@ -301,6 +301,7 @@ class SOM(nn.Module):
     def fit(self, samples, batch_size=20, n_iter=None, print_each=20, do_compute_all_dists=True):
         if self.alpha is None:
             self.alpha = float((self.m * self.n) / samples.shape[0])
+            print('alpha:', self.alpha)
         if n_iter is None:
             n_iter = self.niter
         n_steps_periter = len(samples) // batch_size
