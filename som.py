@@ -85,8 +85,10 @@ class SOM(nn.Module):
     :param metric: takes as input two torch arrays (n,p) and (m,p) and returns a distance matrix (n,m)
     :param p_norm: p value for the p-norm distance to calculate between each vector pair for torch.cdist
      """
-
-    def __init__(self, m, n, dim,
+    def __init__(self,
+                 m,
+                 n,
+                 dim,
                  alpha=None,
                  sigma=None,
                  niter=2,
@@ -215,10 +217,10 @@ class SOM(nn.Module):
             return 1.0 - it / tot
         # half the lr 20 times
         if self.sched == 'half':
-            return 0.5 ** int(20 * it / tot)
+            return 0.5**int(20 * it / tot)
         # decay from 1 to exp(-5)
         if self.sched == 'exp':
-            return np.exp(- 5 * it / tot)
+            return np.exp(-5 * it / tot)
         raise NotImplementedError('Wrong value of "sched"')
 
     def __call__(self, x, learning_rate_op):
@@ -253,7 +255,7 @@ class SOM(nn.Module):
             for loc in bmu_loc:
                 bmu_distance_squares.append(self.get_bmu_distance_squares(loc))
             bmu_distance_squares = torch.stack(bmu_distance_squares)
-        neighbourhood_func = torch.exp(torch.neg(torch.div(bmu_distance_squares, 2 * sigma_op ** 2 + 1e-5)))
+        neighbourhood_func = torch.exp(torch.neg(torch.div(bmu_distance_squares, 2 * sigma_op**2 + 1e-5)))
         learning_rate_multiplier = alpha_op * neighbourhood_func
 
         # Take the difference of centroids with centroids and weight it with gaussian
@@ -296,7 +298,7 @@ class SOM(nn.Module):
             mindists = torch.take(dists, selected)
             return selected.squeeze(), mindists
 
-    def fit(self, samples, batch_size=20, n_iter=None, print_each=20):
+    def fit(self, samples, batch_size=20, n_iter=None, print_each=20, do_compute_all_dists=True):
         if self.alpha is None:
             self.alpha = float((self.m * self.n) / samples.shape[0])
         if n_iter is None:
@@ -314,13 +316,15 @@ class SOM(nn.Module):
                 bmu_loc, error = self.__call__(samples[index:index + batch_size], learning_rate_op=lr_step)
                 learning_error.append(error)
                 if not step % print_each:
-                    print(f'{iter_no + 1}/{n_iter}: {batch_size * (counter + 1)}/{len(samples)} '
-                          f'| alpha: {self.alpha_op:4f} | sigma: {self.sigma_op:4f} '
-                          f'| error: {error:4f} | time {time.perf_counter() - start:4f}',
-                          flush=True)
+                    print(
+                        f'{iter_no + 1}/{n_iter}: {batch_size * (counter + 1)}/{len(samples)} '
+                        f'| alpha: {self.alpha_op:4f} | sigma: {self.sigma_op:4f} '
+                        f'| error: {error:4f} | time {time.perf_counter() - start:4f}',
+                        flush=True)
                 step += 1
         self.compute_umat()
-        self.compute_all_dists()
+        if do_compute_all_dists:
+            self.compute_all_dists()
         return learning_error
 
     def predict(self, samples, batch_size=100):
@@ -401,8 +405,7 @@ class SOM(nn.Module):
         n1, n2 = umat.shape
         mstree = graph.minimum_spanning_tree(adj)
         start = umat.argmin()
-        sdist, pred = graph.shortest_path(mstree, indices=start, directed=False,
-                                          return_predecessors=True)
+        sdist, pred = graph.shortest_path(mstree, indices=start, directed=False, return_predecessors=True)
         floodpath = np.asarray(np.unravel_index(sdist.argsort(), (n1, n2))).T
         parents_floodpath = np.asarray(np.unravel_index(pred[sdist.argsort()][1:], (n1, n2))).T
         flow = np.sign(floodpath[1:] - parents_floodpath)
@@ -430,7 +433,6 @@ class SOM(nn.Module):
         """
         Compute the U-matrix based on a map of centroids and their connectivity.
         """
-
         def neighbor_dim2_toric(p, s):
             """
             Efficient toric neighborhood function for 2D SOM.
@@ -478,7 +480,9 @@ class SOM(nn.Module):
             cdists = torch_cdists.numpy()
             umatrix[point] = cdists.mean()
 
-            adjmat['row'].extend([np.ravel_multi_index(point, shape), ] * len(neighbors[0]))
+            adjmat['row'].extend([
+                np.ravel_multi_index(point, shape),
+            ] * len(neighbors[0]))
             adjmat['col'].extend(np.ravel_multi_index(neighbors, shape))
             adjmat['data'].extend(cdists[:, 0])
         if rmsd:
@@ -487,8 +491,7 @@ class SOM(nn.Module):
             umatrix = np.sqrt(umatrix)
 
         if return_adjacency:
-            adjmat = scipy.sparse.coo_matrix((adjmat['data'],
-                                              (adjmat['row'], adjmat['col'])),
+            adjmat = scipy.sparse.coo_matrix((adjmat['data'], (adjmat['row'], adjmat['col'])),
                                              shape=(np.prod(shape), np.prod(shape)))
             return umatrix, adjmat
         else:
@@ -633,7 +636,7 @@ if __name__ == '__main__':
 
     # Create SOM
     n = 10
-    somsize = n ** 2
+    somsize = n**2
     nsamples = X.shape[0]
     dim = X.shape[1]
     niter = 20
