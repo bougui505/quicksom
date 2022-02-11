@@ -298,7 +298,7 @@ class SOM(nn.Module):
             mindists = torch.take(dists, selected)
             return selected.squeeze(), mindists
 
-    def fit(self, samples, batch_size=20, n_iter=None, print_each=20, do_compute_all_dists=True):
+    def fit(self, samples, batch_size=20, n_iter=None, print_each=20, do_compute_all_dists=True, unfold=True):
         if self.alpha is None:
             self.alpha = float((self.m * self.n) / samples.shape[0])
             print('alpha:', self.alpha)
@@ -323,7 +323,7 @@ class SOM(nn.Module):
                         f'| error: {error:4f} | time {time.perf_counter() - start:4f}',
                         flush=True)
                 step += 1
-        self.compute_umat()
+        self.compute_umat(unfold=unfold)
         if do_compute_all_dists:
             self.compute_all_dists()
         return learning_error
@@ -498,14 +498,14 @@ class SOM(nn.Module):
         else:
             return umatrix
 
-    def compute_umat(self):
+    def compute_umat(self, unfold=True):
         smap = self.centroids.cpu().numpy().reshape((self.m, self.n, -1))
         umat, adj = self._get_umat(smap, shape=(self.m, self.n), return_adjacency=True, periodic=self.periodic)
         # Renormalize
         umat = (umat - np.min(umat)) / (np.max(umat) - np.min(umat))
         self.umat = umat
         self.adj = adj
-        if self.periodic:
+        if self.periodic and unfold:
             uumat, mapping = self._unfold(umat, adj)
             self.uumat = uumat
             self.mapping = mapping
