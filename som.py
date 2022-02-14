@@ -84,6 +84,7 @@ class SOM(nn.Module):
     :param periodic: Boolean to use a periodic topology
     :param metric: takes as input two torch arrays (n,p) and (m,p) and returns a distance matrix (n,m)
     :param p_norm: p value for the p-norm distance to calculate between each vector pair for torch.cdist
+    :param centroids: Initial som map to use. No random initialization
      """
     def __init__(self,
                  m,
@@ -97,7 +98,8 @@ class SOM(nn.Module):
                  precompute=True,
                  periodic=False,
                  metric=None,
-                 p_norm=2):
+                 p_norm=2,
+                 centroids=None):
 
         # topology of the som
         super(SOM, self).__init__()
@@ -124,7 +126,10 @@ class SOM(nn.Module):
         else:
             self.sigma = float(sigma)
 
-        self.centroids = torch.randn(m * n, dim, device=device, dtype=torch.float)
+        if centroids is None:
+            self.centroids = torch.randn(m * n, dim, device=device, dtype=torch.float)
+        else:
+            self.centroids = centroids
         # self.centroids = torch.randn(m * n, dim, device=device, dtype=torch.double)
 
         locs = [np.array([i, j]) for i in range(self.m) for j in range(self.n)]
