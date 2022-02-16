@@ -310,14 +310,18 @@ class SOM(nn.Module):
             print_each=20,
             do_compute_all_dists=True,
             unfold=True,
-            normalize_umat=True):
+            normalize_umat=True,
+            nrun=1):
+        """
+        nrun: To compute the lr/radius decay if multiple runs are performed
+        """
         if self.alpha is None:
             self.alpha = float((self.m * self.n) / samples.shape[0])
             print('alpha:', self.alpha)
         if n_iter is None:
             n_iter = self.niter
         n_steps_periter = len(samples) // batch_size
-        total_steps = n_iter * n_steps_periter
+        total_steps = nrun * n_iter * n_steps_periter
 
         step = 0
         start = time.perf_counter()
