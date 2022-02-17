@@ -323,6 +323,8 @@ class SOM(nn.Module):
             n_iter = self.niter
         n_steps_periter = len(samples) // batch_size
         total_steps = nrun * n_iter * n_steps_periter
+        if self.step >= total_steps:
+            self.step = 0
 
         start = time.perf_counter()
         learning_error = list()
