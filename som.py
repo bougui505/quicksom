@@ -103,6 +103,7 @@ class SOM(nn.Module):
 
         # topology of the som
         super(SOM, self).__init__()
+        self.step = 0
         self.m = m
         self.n = n
         self.grid_size = m * n
@@ -323,22 +324,21 @@ class SOM(nn.Module):
         n_steps_periter = len(samples) // batch_size
         total_steps = nrun * n_iter * n_steps_periter
 
-        step = 0
         start = time.perf_counter()
         learning_error = list()
         for iter_no in range(n_iter):
             order = np.random.choice(len(samples), size=n_steps_periter, replace=False)
             for counter, index in enumerate(order):
-                lr_step = self.scheduler(step, total_steps)
+                lr_step = self.scheduler(self.step, total_steps)
                 bmu_loc, error = self.__call__(samples[index:index + batch_size], learning_rate_op=lr_step)
                 learning_error.append(error)
-                if not step % print_each:
+                if not self.step % print_each:
                     print(
                         f'{iter_no + 1}/{n_iter}: {batch_size * (counter + 1)}/{len(samples)} '
                         f'| alpha: {self.alpha_op:4f} | sigma: {self.sigma_op:4f} '
                         f'| error: {error:4f} | time {time.perf_counter() - start:4f}',
                         flush=True)
-                step += 1
+                self.step += 1
         self.compute_umat(unfold=unfold, normalize=normalize_umat)
         if do_compute_all_dists:
             self.compute_all_dists()
