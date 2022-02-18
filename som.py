@@ -321,7 +321,7 @@ class SOM(nn.Module):
         """
         if logfile is not None:
             logfile = open(logfile, 'w', buffering=1)
-            logfile.write('#epoch #iter #alpha #sigma #error #runtime')
+            logfile.write('#epoch #iter #alpha #sigma #error #runtime\n')
         if self.alpha is None:
             self.alpha = float((self.m * self.n) / samples.shape[0])
             print('alpha:', self.alpha)
@@ -354,7 +354,7 @@ class SOM(nn.Module):
                         f'| error: {error:4f} | time {runtime:4f}',
                         flush=True)
                     if logfile is not None:
-                        logfile.write(f'{iter_no} {batch_size * (counter + 1)} {alpha} {sigma} {error} {runtime}')
+                        logfile.write(f'{iter_no} {batch_size * (counter + 1)} {alpha} {sigma} {error} {runtime}\n')
                 self.step += 1
         self.compute_umat(unfold=unfold, normalize=normalize_umat)
         if do_compute_all_dists:
