@@ -320,7 +320,7 @@ class SOM(nn.Module):
         nrun: To compute the lr/radius decay if multiple runs are performed
         """
         if logfile is not None:
-            logfile = open(logfile, 'w')
+            logfile = open(logfile, 'w', buffering=1)
             logfile.write('#epoch #iter #alpha #sigma #error #runtime')
         if self.alpha is None:
             self.alpha = float((self.m * self.n) / samples.shape[0])
