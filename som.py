@@ -314,10 +314,14 @@ class SOM(nn.Module):
             normalize_umat=True,
             nrun=1,
             sigma=None,
-            alpha=None):
+            alpha=None,
+            logfile='som.log'):
         """
         nrun: To compute the lr/radius decay if multiple runs are performed
         """
+        if logfile is not None:
+            logfile = open(logfile, 'w')
+            logfile.write('#epoch #iter #alpha #sigma #error #runtime')
         if self.alpha is None:
             self.alpha = float((self.m * self.n) / samples.shape[0])
             print('alpha:', self.alpha)
@@ -343,15 +347,20 @@ class SOM(nn.Module):
                 bmu_loc, error = self.__call__(samples[index:index + batch_size], learning_rate_op=lr_step)
                 learning_error.append(error)
                 if not self.step % print_each:
+                    runtime = time.perf_counter() - start
                     print(
                         f'{iter_no + 1}/{n_iter}: {batch_size * (counter + 1)}/{len(samples)} '
                         f'| alpha: {self.alpha_op:4f} | sigma: {self.sigma_op:4f} '
-                        f'| error: {error:4f} | time {time.perf_counter() - start:4f}',
+                        f'| error: {error:4f} | time {runtime:4f}',
                         flush=True)
+                    if logfile is not None:
+                        logfile.write(f'{iter_no} {batch_size * (counter + 1)} {alpha} {sigma} {error} {runtime}')
                 self.step += 1
         self.compute_umat(unfold=unfold, normalize=normalize_umat)
         if do_compute_all_dists:
             self.compute_all_dists()
+        if logfile is not None:
+            logfile.close()
         return learning_error
 
     def predict(self, samples, batch_size=100):
