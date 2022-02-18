@@ -354,7 +354,9 @@ class SOM(nn.Module):
                         f'| error: {error:4f} | time {runtime:4f}',
                         flush=True)
                     if logfile is not None:
-                        logfile.write(f'{iter_no} {batch_size * (counter + 1)} {alpha} {sigma} {error} {runtime}\n')
+                        logfile.write(
+                            f'{iter_no} {batch_size * (counter + 1)} {self.alpha_op} {self.sigma_op} {error} {runtime}\n'
+                        )
                 self.step += 1
         self.compute_umat(unfold=unfold, normalize=normalize_umat)
         if do_compute_all_dists:
