@@ -365,7 +365,7 @@ class SOM(nn.Module):
             logfile.close()
         return learning_error
 
-    def predict(self, samples, batch_size=100):
+    def predict(self, samples, batch_size=100, return_density=False):
         """
         Batch the prediction to avoid memory overloading
         """
@@ -375,17 +375,25 @@ class SOM(nn.Module):
 
         bmus = np.zeros((len(samples), 2))
         errors = list()
+        if return_density:
+            density = np.zeros((self.m, self.n))
 
         for i in range(n_batch + 1):
             sys.stdout.write(f'{i + 1}/{n_batch + 1}\r')
             sys.stdout.flush()
             batch = samples[i * batch_size:i * batch_size + batch_size]
             bmu_loc, error = self.inference_call(batch)
+            if return_density:
+                density[tuple(bmu_loc.T)] += 1.
             bmus[i * batch_size:i * batch_size + batch_size] = bmu_loc.cpu().numpy()
             errors.append(error)
         errors = torch.cat(errors)
         errors = errors.cpu().numpy()
-        return bmus, errors
+        if not return_density:
+            return bmus, errors
+        else:
+            density /= density.sum()
+            return bmus, errors, density
 
     def compute_error(self, samples, batch_size=100):
         """
