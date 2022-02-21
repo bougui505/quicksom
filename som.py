@@ -383,9 +383,10 @@ class SOM(nn.Module):
             sys.stdout.flush()
             batch = samples[i * batch_size:i * batch_size + batch_size]
             bmu_loc, error = self.inference_call(batch)
+            bmu_loc = bmu_loc.cpu().numpy()
             if return_density:
                 density[tuple(bmu_loc.T)] += 1.
-            bmus[i * batch_size:i * batch_size + batch_size] = bmu_loc.cpu().numpy()
+            bmus[i * batch_size:i * batch_size + batch_size] = bmu_loc
             errors.append(error)
         errors = torch.cat(errors)
         errors = errors.cpu().numpy()
