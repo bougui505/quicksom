@@ -45,6 +45,6 @@ som = SOM(args.m,
           niter=args.n_iter,
           device=device)
 
-learning_error = som.fit(X, batch_size=args.batch_size)
+learning_error = som.fit(samples=X, batch_size=args.batch_size)
 som.to_device('cpu')
 pickle.dump(som, open(args.out_name, 'wb'))
