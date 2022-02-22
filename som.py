@@ -305,7 +305,8 @@ class SOM(nn.Module):
             return selected.squeeze(), mindists
 
     def fit(self,
-            samples,
+            samples=None,
+            dataset=None,
             batch_size=20,
             n_iter=None,
             print_each=20,
@@ -315,15 +316,29 @@ class SOM(nn.Module):
             nrun=1,
             sigma=None,
             alpha=None,
-            logfile='som.log'):
+            logfile='som.log',
+            num_workers=4):
         """
+        samples: torch tensor with all the data. If given dataloader must not be given
+        dataset: torch data loader object. If given samples must not be given
         nrun: To compute the lr/radius decay if multiple runs are performed
         """
+        if samples is not None and dataset is not None:
+            raise ValueError('Both a sample and a dataloader are given. Only one must be given')
         if logfile is not None:
             logfile = open(logfile, 'w', buffering=1)
             logfile.write('#epoch #iter #alpha #sigma #error #runtime\n')
+        if samples is not None:
+            ndata = len(samples)
+        if dataset is not None:
+            ndata = dataset.__len__()
+            dataloader = torch.utils.data.DataLoader(dataset,
+                                                     batch_size=batch_size,
+                                                     shuffle=True,
+                                                     num_workers=num_workers)
+            dataloader = iter(dataloader)
         if self.alpha is None:
-            self.alpha = float((self.m * self.n) / samples.shape[0])
+            self.alpha = float((self.m * self.n) / ndata)
             print('alpha:', self.alpha)
         if sigma is not None:
             # reset the sigma
@@ -333,7 +348,7 @@ class SOM(nn.Module):
             self.alpha = alpha
         if n_iter is None:
             n_iter = self.niter
-        n_steps_periter = len(samples) // batch_size
+        n_steps_periter = ndata // batch_size
         total_steps = nrun * n_iter * n_steps_periter
         if self.step >= total_steps:
             self.step = 0
@@ -341,15 +356,23 @@ class SOM(nn.Module):
         start = time.perf_counter()
         learning_error = list()
         for iter_no in range(n_iter):
-            order = np.random.choice(len(samples), size=n_steps_periter, replace=False)
-            for counter, index in enumerate(order):
+            if samples is not None:
+                order = np.random.choice(len(samples), size=n_steps_periter, replace=False)
+            # for counter, index in enumerate(order):
+            for counter in range(n_steps_periter):
+                if samples is not None:
+                    index = order[counter]
                 lr_step = self.scheduler(self.step, total_steps)
-                bmu_loc, error = self.__call__(samples[index:index + batch_size], learning_rate_op=lr_step)
+                if samples is not None:
+                    batch = samples[index:index + batch_size]
+                if dataset is not None:
+                    _, batch = next(dataloader)
+                bmu_loc, error = self.__call__(batch, learning_rate_op=lr_step)
                 learning_error.append(error)
                 if not self.step % print_each:
                     runtime = time.perf_counter() - start
                     print(
-                        f'{iter_no + 1}/{n_iter}: {batch_size * (counter + 1)}/{len(samples)} '
+                        f'{iter_no + 1}/{n_iter}: {batch_size * (counter + 1)}/{ndata} '
                         f'| alpha: {self.alpha_op:4f} | sigma: {self.sigma_op:4f} '
                         f'| error: {error:4f} | time {runtime:4f}',
                         flush=True)
@@ -358,6 +381,10 @@ class SOM(nn.Module):
                             f'{iter_no} {batch_size * (counter + 1)} {self.alpha_op} {self.sigma_op} {error} {runtime}\n'
                         )
                 self.step += 1
+                # ##########TO REMOVE##########
+                if self.step >= 10:
+                    break
+                ##########TO REMOVE##########
         self.compute_umat(unfold=unfold, normalize=normalize_umat)
         if do_compute_all_dists:
             self.compute_all_dists()
@@ -365,23 +392,34 @@ class SOM(nn.Module):
             logfile.close()
         return learning_error
 
-    def predict(self, samples, batch_size=100, return_density=False):
+    def predict(self, samples=None, dataset=None, batch_size=100, return_density=False, num_workers=4):
         """
         Batch the prediction to avoid memory overloading
         """
-        batch_size = min(batch_size, len(samples))
+        if dataset is not None:
+            ndata = dataset.__len__()
+        if samples is not None:
+            ndata = len(samples)
+        batch_size = min(batch_size, ndata)
         # Avoid empty batches
-        n_batch = (len(samples) - 1) // batch_size
+        n_batch = (ndata - 1) // batch_size
 
-        bmus = np.zeros((len(samples), 2))
+        bmus = np.zeros((ndata, 2))
         errors = list()
         if return_density:
             density = np.zeros((self.m, self.n))
 
+        dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
+        dataloader = iter(dataloader)
+        labels = []
         for i in range(n_batch + 1):
             sys.stdout.write(f'{i + 1}/{n_batch + 1}\r')
             sys.stdout.flush()
-            batch = samples[i * batch_size:i * batch_size + batch_size]
+            if samples is not None:
+                batch = samples[i * batch_size:i * batch_size + batch_size]
+            else:
+                label, batch = next(dataloader)
+                labels.extend(label)
             bmu_loc, error = self.inference_call(batch)
             bmu_loc = bmu_loc.cpu().numpy()
             if return_density:
@@ -391,10 +429,10 @@ class SOM(nn.Module):
         errors = torch.cat(errors)
         errors = errors.cpu().numpy()
         if not return_density:
-            return bmus, errors
+            return bmus, errors, labels
         else:
             density /= density.sum()
-            return bmus, errors, density
+            return bmus, errors, density, labels
 
     def compute_error(self, samples, batch_size=100):
         """
