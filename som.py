@@ -367,7 +367,10 @@ class SOM(nn.Module):
                 if samples is not None:
                     batch = samples[index:index + batch_size]
                 if dataset is not None:
-                    _, batch = next(dataloader)
+                    try:
+                        _, batch = next(dataloader)
+                    except StopIteration:
+                        dataloader = iter(dataloader)
                     batch = batch.to(self.device)
                     batch = batch.float()
                 bmu_loc, error = self.__call__(batch, learning_rate_op=lr_step)
