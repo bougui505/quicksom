@@ -337,7 +337,7 @@ class SOM(nn.Module):
                                                      batch_size=batch_size,
                                                      shuffle=True,
                                                      num_workers=num_workers)
-            dataloader = iter(dataloader)
+            dataloader_iter = iter(dataloader)
         if self.alpha is None:
             self.alpha = float((self.m * self.n) / ndata)
             print('alpha:', self.alpha)
@@ -368,9 +368,10 @@ class SOM(nn.Module):
                     batch = samples[index:index + batch_size]
                 if dataset is not None:
                     try:
-                        _, batch = next(dataloader)
+                        _, batch = next(dataloader_iter)
                     except StopIteration:
-                        dataloader = iter(dataloader)
+                        dataloader_iter = iter(dataloader)
+                        _, batch = next(dataloader_iter)
                     batch = batch.to(self.device)
                     batch = batch.float()
                 bmu_loc, error = self.__call__(batch, learning_rate_op=lr_step)
@@ -412,7 +413,7 @@ class SOM(nn.Module):
             density = np.zeros((self.m, self.n))
 
         dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
-        dataloader = iter(dataloader)
+        dataloader_iter = iter(dataloader)
         labels = []
         for i in range(n_batch + 1):
             sys.stdout.write(f'{i + 1}/{n_batch + 1}\r')
@@ -420,7 +421,7 @@ class SOM(nn.Module):
             if samples is not None:
                 batch = samples[i * batch_size:i * batch_size + batch_size]
             else:
-                label, batch = next(dataloader)
+                label, batch = next(dataloader_iter)
                 labels.extend(label)
             bmu_loc, error = self.inference_call(batch)
             bmu_loc = bmu_loc.cpu().numpy()
