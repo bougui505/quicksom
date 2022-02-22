@@ -381,10 +381,6 @@ class SOM(nn.Module):
                             f'{iter_no} {batch_size * (counter + 1)} {self.alpha_op} {self.sigma_op} {error} {runtime}\n'
                         )
                 self.step += 1
-                # ##########TO REMOVE##########
-                if self.step >= 10:
-                    break
-                ##########TO REMOVE##########
         self.compute_umat(unfold=unfold, normalize=normalize_umat)
         if do_compute_all_dists:
             self.compute_all_dists()
