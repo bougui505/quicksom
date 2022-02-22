@@ -103,6 +103,7 @@ class SOM(nn.Module):
 
         # topology of the som
         super(SOM, self).__init__()
+        self.device = device
         self.step = 0
         self.m = m
         self.n = n
@@ -367,6 +368,8 @@ class SOM(nn.Module):
                     batch = samples[index:index + batch_size]
                 if dataset is not None:
                     _, batch = next(dataloader)
+                    batch = batch.to(self.device)
+                    batch = batch.float()
                 bmu_loc, error = self.__call__(batch, learning_rate_op=lr_step)
                 learning_error.append(error)
                 if not self.step % print_each:
