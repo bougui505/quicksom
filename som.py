@@ -62,6 +62,17 @@ from skimage.feature import peak_local_max
 from sklearn.cluster import AgglomerativeClustering
 
 
+class ArrayDataset(torch.utils.data.Dataset):
+    def __init__(self, nparr):
+        self.nparr = nparr
+
+    def __len__(self):
+        return len(self.nparr)
+
+    def __getitem__(self, idx):
+        return idx, self.nparr[idx]
+
+
 class SOM(nn.Module):
     """
     2-D Self-Organizing Map with Gaussian Neighbourhood function
@@ -306,7 +317,6 @@ class SOM(nn.Module):
             return selected.squeeze(), mindists
 
     def fit(self,
-            samples=None,
             dataset=None,
             batch_size=20,
             n_iter=None,
@@ -324,20 +334,14 @@ class SOM(nn.Module):
         dataset: torch data loader object. If given samples must not be given
         nrun: To compute the lr/radius decay if multiple runs are performed
         """
-        if samples is not None and dataset is not None:
-            raise ValueError('Both a sample and a dataloader are given. Only one must be given')
         if logfile is not None:
             logfile = open(logfile, 'w', buffering=1)
             logfile.write('#epoch #iter #alpha #sigma #error #runtime\n')
-        if samples is not None:
-            ndata = len(samples)
-        if dataset is not None:
-            ndata = dataset.__len__()
-            dataloader = torch.utils.data.DataLoader(dataset,
-                                                     batch_size=batch_size,
-                                                     shuffle=True,
-                                                     num_workers=num_workers)
-            dataloader_iter = iter(dataloader)
+        if not isinstance(dataset, torch.utils.data.Dataset):
+            dataset = ArrayDataset(dataset)
+        dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+        ndata = dataset.__len__()
+
         if self.alpha is None:
             self.alpha = float((self.m * self.n) / ndata)
             print('alpha:', self.alpha)
@@ -357,23 +361,10 @@ class SOM(nn.Module):
         start = time.perf_counter()
         learning_error = list()
         for iter_no in range(n_iter):
-            if samples is not None:
-                order = np.random.choice(len(samples), size=n_steps_periter, replace=False)
-            # for counter, index in enumerate(order):
-            for counter in range(n_steps_periter):
-                if samples is not None:
-                    index = order[counter]
+            for counter, (label, batch) in enumerate(dataloader):
                 lr_step = self.scheduler(self.step, total_steps)
-                if samples is not None:
-                    batch = samples[index:index + batch_size]
-                if dataset is not None:
-                    try:
-                        _, batch = next(dataloader_iter)
-                    except StopIteration:
-                        dataloader_iter = iter(dataloader)
-                        _, batch = next(dataloader_iter)
-                    batch = batch.to(self.device)
-                    batch = batch.float()
+                batch = batch.to(self.device)
+                batch = batch.float()
                 bmu_loc, error = self.__call__(batch, learning_rate_op=lr_step)
                 learning_error.append(error)
                 if not self.step % print_each:
@@ -395,34 +386,23 @@ class SOM(nn.Module):
             logfile.close()
         return learning_error
 
-    def predict(self, samples=None, dataset=None, batch_size=100, return_density=False, num_workers=4):
+    def predict(self, dataset=None, batch_size=100, return_density=False, num_workers=4):
         """
         Batch the prediction to avoid memory overloading
         """
-        if dataset is not None:
-            ndata = dataset.__len__()
-        if samples is not None:
-            ndata = len(samples)
-        batch_size = min(batch_size, ndata)
-        # Avoid empty batches
-        n_batch = (ndata - 1) // batch_size
-
+        if not isinstance(dataset, torch.utils.data.Dataset):
+            dataset = ArrayDataset(dataset)
+        dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
+        ndata = dataset.__len__()
         bmus = np.zeros((ndata, 2))
         errors = list()
         if return_density:
             density = np.zeros((self.m, self.n))
-
-        dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
-        dataloader_iter = iter(dataloader)
         labels = []
-        for i in range(n_batch + 1):
-            sys.stdout.write(f'{i + 1}/{n_batch + 1}\r')
+        for i, (label, batch) in enumerate(dataloader):
+            sys.stdout.write(f'{i + 1}/{len(dataloader) + 1}\r')
             sys.stdout.flush()
-            if samples is not None:
-                batch = samples[i * batch_size:i * batch_size + batch_size]
-            else:
-                label, batch = next(dataloader_iter)
-                labels.extend(label)
+            labels.extend(label)
             bmu_loc, error = self.inference_call(batch)
             bmu_loc = bmu_loc.cpu().numpy()
             if return_density:
@@ -690,7 +670,7 @@ class SOM(nn.Module):
             except:
                 print('No existing BMUs in the SOM object, one needs data points to predict clusters on')
         else:
-            bmus, error = self.predict(samples, batch_size=batch_size)
+            bmus, error, labels = self.predict(samples, batch_size=batch_size)
             self.bmus = bmus
             self.error = error
         flat_bmus = (self.bmus[:, 0] * self.n + self.bmus[:, 1]).astype(np.int32)
@@ -735,6 +715,6 @@ if __name__ == '__main__':
 
     # Fit it and get results
     learning_error = som.fit(X, batch_size=batch_size)
-    bmus, inference_error = som.predict(X, batch_size=batch_size)
+    bmus, inference_error, labels = som.predict(X, batch_size=batch_size)
     predicted_clusts, errors = som.predict_cluster(X[45:56])
     print('some cluster for some random points are : ', predicted_clusts)
