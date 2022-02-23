@@ -41,6 +41,7 @@ import torch.nn as nn
 import time
 import itertools
 import matplotlib.pyplot as plt
+import os
 
 import numpy as np
 import scipy.spatial
@@ -328,7 +329,7 @@ class SOM(nn.Module):
             sigma=None,
             alpha=None,
             logfile='som.log',
-            num_workers=4):
+            num_workers=os.cpu_count()):
         """
         samples: torch tensor with all the data. If given dataloader must not be given
         dataset: torch data loader object. If given samples must not be given
@@ -363,7 +364,7 @@ class SOM(nn.Module):
         for iter_no in range(n_iter):
             for counter, (label, batch) in enumerate(dataloader):
                 lr_step = self.scheduler(self.step, total_steps)
-                batch = batch.to(self.device)
+                batch = batch.to(self.device, non_blocking=True)
                 batch = batch.float()
                 bmu_loc, error = self.__call__(batch, learning_rate_op=lr_step)
                 learning_error.append(error)
@@ -402,6 +403,7 @@ class SOM(nn.Module):
         for i, (label, batch) in enumerate(dataloader):
             sys.stdout.write(f'{i + 1}/{len(dataloader) + 1}\r')
             sys.stdout.flush()
+            batch = batch.to(self.device)
             labels.extend(label)
             bmu_loc, error = self.inference_call(batch)
             bmu_loc = bmu_loc.cpu().numpy()
@@ -693,22 +695,17 @@ class SOM(nn.Module):
 if __name__ == '__main__':
     pass
     # Prepare data
-    max_points = 5000
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    X = np.random.rand(10000, 50)
-    y = np.random.rand(10000, 1) > 0.5
-    X = X[:max_points]
-    y = y[:max_points]
+    X = np.random.rand(1000, 50)
     X = torch.from_numpy(X)
     X = X.float()
-    X = X.to(device)
 
     # Create SOM
     n = 10
     somsize = n**2
     nsamples = X.shape[0]
     dim = X.shape[1]
-    niter = 20
+    niter = 5
     batch_size = 50
     nsteps = int(nsamples / batch_size)
     som = SOM(n, n, dim, niter=niter, device=device, precompute=True, periodic=True)
