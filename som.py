@@ -74,11 +74,11 @@ class ArrayDataset(torch.utils.data.Dataset):
         return idx, self.nparr[idx]
 
 
-def build_dataloader(dataset, num_workers):
+def build_dataloader(dataset, num_workers, batch_size, shuffle=True):
     if not isinstance(dataset, torch.utils.data.Dataset) and not isinstance(dataset, torch.utils.data.DataLoader):
         dataset = ArrayDataset(dataset)
     if isinstance(dataset, torch.utils.data.Dataset):
-        dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+        dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers)
     if isinstance(dataset, torch.utils.data.DataLoader):
         dataloader = dataset
     return dataloader
@@ -346,7 +346,7 @@ class SOM(nn.Module):
         if logfile is not None:
             logfile = open(logfile, 'w', buffering=1)
             logfile.write('#epoch #iter #alpha #sigma #error #runtime\n')
-        dataloader = build_dataloader(dataset, num_workers)
+        dataloader = build_dataloader(dataset, num_workers, batch_size=batch_size)
         nbatch = len(dataloader)
 
         if self.alpha is None:
@@ -393,9 +393,13 @@ class SOM(nn.Module):
         """
         Batch the prediction to avoid memory overloading
         """
-        dataloader = build_dataloader(dataset, num_workers=num_workers)
-        ndata = len(dataloader.dataset)
-        bmus = np.zeros((ndata, 2))
+        dataloader = build_dataloader(dataset, num_workers=num_workers, batch_size=batch_size, shuffle=False)
+        npts = len(dataloader.dataset)
+        nbatch = len(dataloader)
+        batch_size = npts // nbatch
+        # ndata = len(dataloader.dataset)
+        # bmus = np.zeros((ndata, 2))
+        bmus = list()
         errors = list()
         if return_density:
             density = np.zeros((self.m, self.n))
@@ -406,11 +410,14 @@ class SOM(nn.Module):
             batch = batch.to(self.device)
             labels.extend(label)
             bmu_loc, error = self.inference_call(batch)
-            bmu_loc = bmu_loc.cpu().numpy()
             if return_density:
-                density[tuple(bmu_loc.T)] += 1.
-            bmus[i * batch_size:i * batch_size + batch_size] = bmu_loc
+                density[tuple(bmu_loc.cpu().numpy().T)] += 1.
+            bmus.append(bmu_loc)
+            if error.ndim == 0:
+                error = error[None, ...]
             errors.append(error)
+        bmus = torch.cat(bmus)
+        bmus = bmus.cpu().numpy()
         errors = torch.cat(errors)
         errors = errors.cpu().numpy()
         if not return_density:
