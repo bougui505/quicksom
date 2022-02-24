@@ -325,7 +325,6 @@ class SOM(nn.Module):
             do_compute_all_dists=True,
             unfold=True,
             normalize_umat=True,
-            nrun=1,
             sigma=None,
             alpha=None,
             logfile='som.log',
@@ -333,14 +332,19 @@ class SOM(nn.Module):
         """
         samples: torch tensor with all the data. If given dataloader must not be given
         dataset: torch data loader object. If given samples must not be given
-        nrun: To compute the lr/radius decay if multiple runs are performed
         """
         if logfile is not None:
             logfile = open(logfile, 'w', buffering=1)
             logfile.write('#epoch #iter #alpha #sigma #error #runtime\n')
-        if not isinstance(dataset, torch.utils.data.Dataset):
+        if not isinstance(dataset, torch.utils.data.Dataset) and not isinstance(dataset, torch.utils.data.DataLoader):
             dataset = ArrayDataset(dataset)
-        dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+        if isinstance(dataset, torch.utils.data.Dataset):
+            dataloader = torch.utils.data.DataLoader(dataset,
+                                                     batch_size=batch_size,
+                                                     shuffle=True,
+                                                     num_workers=num_workers)
+        if isinstance(dataset, torch.utils.data.DataLoader):
+            dataloader = dataset
         ndata = dataset.__len__()
 
         if self.alpha is None:
@@ -355,7 +359,7 @@ class SOM(nn.Module):
         if n_iter is None:
             n_iter = self.niter
         n_steps_periter = ndata // batch_size
-        total_steps = nrun * n_iter * n_steps_periter
+        total_steps = n_iter * n_steps_periter
         if self.step >= total_steps:
             self.step = 0
 
