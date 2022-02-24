@@ -74,6 +74,16 @@ class ArrayDataset(torch.utils.data.Dataset):
         return idx, self.nparr[idx]
 
 
+def build_dataloader(dataset, num_workers):
+    if not isinstance(dataset, torch.utils.data.Dataset) and not isinstance(dataset, torch.utils.data.DataLoader):
+        dataset = ArrayDataset(dataset)
+    if isinstance(dataset, torch.utils.data.Dataset):
+        dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+    if isinstance(dataset, torch.utils.data.DataLoader):
+        dataloader = dataset
+    return dataloader
+
+
 class SOM(nn.Module):
     """
     2-D Self-Organizing Map with Gaussian Neighbourhood function
@@ -104,7 +114,7 @@ class SOM(nn.Module):
                  dim,
                  alpha=None,
                  sigma=None,
-                 niter=2,
+                 n_epoch=2,
                  sched='linear',
                  device='cpu',
                  precompute=True,
@@ -130,7 +140,7 @@ class SOM(nn.Module):
 
         # optimization parameters
         self.sched = sched
-        self.niter = niter
+        self.n_epoch = n_epoch
         if alpha is not None:
             self.alpha = float(alpha)
         else:
@@ -320,7 +330,7 @@ class SOM(nn.Module):
     def fit(self,
             dataset=None,
             batch_size=20,
-            n_iter=None,
+            n_epoch=None,
             print_each=20,
             do_compute_all_dists=True,
             unfold=True,
@@ -336,19 +346,11 @@ class SOM(nn.Module):
         if logfile is not None:
             logfile = open(logfile, 'w', buffering=1)
             logfile.write('#epoch #iter #alpha #sigma #error #runtime\n')
-        if not isinstance(dataset, torch.utils.data.Dataset) and not isinstance(dataset, torch.utils.data.DataLoader):
-            dataset = ArrayDataset(dataset)
-        if isinstance(dataset, torch.utils.data.Dataset):
-            dataloader = torch.utils.data.DataLoader(dataset,
-                                                     batch_size=batch_size,
-                                                     shuffle=True,
-                                                     num_workers=num_workers)
-        if isinstance(dataset, torch.utils.data.DataLoader):
-            dataloader = dataset
-        ndata = dataset.__len__()
+        dataloader = build_dataloader(dataset, num_workers)
+        nbatch = len(dataloader)
 
         if self.alpha is None:
-            self.alpha = float((self.m * self.n) / ndata)
+            self.alpha = float((self.m * self.n) / nbatch)
             print('alpha:', self.alpha)
         if sigma is not None:
             # reset the sigma
@@ -356,17 +358,15 @@ class SOM(nn.Module):
         if alpha is not None:
             # reset the alpha
             self.alpha = alpha
-        if n_iter is None:
-            n_iter = self.niter
-        n_steps_periter = ndata // batch_size
-        total_steps = n_iter * n_steps_periter
-        if self.step >= total_steps:
-            self.step = 0
-
+        if n_epoch is None:
+            n_epoch = self.n_epoch
+        npts = len(dataloader.dataset)
+        batch_size = npts // nbatch
+        total_steps = npts * n_epoch
         start = time.perf_counter()
         learning_error = list()
-        for iter_no in range(n_iter):
-            for counter, (label, batch) in enumerate(dataloader):
+        for epoch in range(n_epoch):
+            for label, batch in dataloader:
                 lr_step = self.scheduler(self.step, total_steps)
                 batch = batch.to(self.device, non_blocking=True)
                 batch = batch.float()
@@ -375,15 +375,13 @@ class SOM(nn.Module):
                 if not self.step % print_each:
                     runtime = time.perf_counter() - start
                     print(
-                        f'{iter_no + 1}/{n_iter}: {batch_size * (counter + 1)}/{ndata} '
+                        f'{epoch + 1}/{n_epoch}: {self.step}/{total_steps} '
                         f'| alpha: {self.alpha_op:4f} | sigma: {self.sigma_op:4f} '
                         f'| error: {error:4f} | time {runtime:4f}',
                         flush=True)
                     if logfile is not None:
-                        logfile.write(
-                            f'{iter_no} {batch_size * (counter + 1)} {self.alpha_op} {self.sigma_op} {error} {runtime}\n'
-                        )
-                self.step += 1
+                        logfile.write(f'{epoch} {self.step} {self.alpha_op} {self.sigma_op} {error} {runtime}\n')
+                self.step += batch_size
         self.compute_umat(unfold=unfold, normalize=normalize_umat)
         if do_compute_all_dists:
             self.compute_all_dists()
@@ -391,14 +389,12 @@ class SOM(nn.Module):
             logfile.close()
         return learning_error
 
-    def predict(self, dataset=None, batch_size=100, return_density=False, num_workers=4):
+    def predict(self, dataset=None, batch_size=100, return_density=False, num_workers=os.cpu_count()):
         """
         Batch the prediction to avoid memory overloading
         """
-        if not isinstance(dataset, torch.utils.data.Dataset):
-            dataset = ArrayDataset(dataset)
-        dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
-        ndata = dataset.__len__()
+        dataloader = build_dataloader(dataset, num_workers=num_workers)
+        ndata = len(dataloader.dataset)
         bmus = np.zeros((ndata, 2))
         errors = list()
         if return_density:
@@ -700,7 +696,7 @@ if __name__ == '__main__':
     pass
     # Prepare data
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    X = np.random.rand(1000, 50)
+    X = np.random.rand(10000, 50)
     X = torch.from_numpy(X)
     X = X.float()
 
@@ -712,7 +708,7 @@ if __name__ == '__main__':
     niter = 5
     batch_size = 50
     nsteps = int(nsamples / batch_size)
-    som = SOM(n, n, dim, niter=niter, device=device, precompute=True, periodic=True)
+    som = SOM(n, n, dim, n_epoch=niter, device=device, precompute=True, periodic=True)
 
     # Fit it and get results
     learning_error = som.fit(X, batch_size=batch_size)
