@@ -78,7 +78,8 @@ def build_dataloader(dataset, num_workers, batch_size, shuffle=True):
     if not isinstance(dataset, torch.utils.data.Dataset) and not isinstance(dataset, torch.utils.data.DataLoader):
         dataset = ArrayDataset(dataset)
     if isinstance(dataset, torch.utils.data.Dataset):
-        dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers)
+        dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=shuffle,
+                                                 num_workers=num_workers)
     if isinstance(dataset, torch.utils.data.DataLoader):
         dataloader = dataset
     return dataloader
@@ -108,6 +109,7 @@ class SOM(nn.Module):
     :param p_norm: p value for the p-norm distance to calculate between each vector pair for torch.cdist
     :param centroids: Initial som map to use. No random initialization
      """
+
     def __init__(self,
                  m,
                  n,
@@ -246,7 +248,7 @@ class SOM(nn.Module):
             return 1.0 - it / tot
         # half the lr 20 times
         if self.sched == 'half':
-            return 0.5**int(20 * it / tot)
+            return 0.5 ** int(20 * it / tot)
         # decay from 1 to exp(-5)
         if self.sched == 'exp':
             return np.exp(-5 * it / tot)
@@ -260,10 +262,15 @@ class SOM(nn.Module):
         :return:
         """
         # Make an inference call
-
         # Compute distances from batch to centroids
         x, batch_size = self.find_batchsize(x)
+        # a = time.perf_counter()
+        # print(x.shape)
+        # print(self.centroids.shape)
         dists = self.metric(x, self.centroids)
+        # if torch.cuda.is_available:
+        #     print('time for dists : ', time.perf_counter() - a)
+        # a = time.perf_counter()
 
         # Find closest and retrieve the gaussian correlation matrix for each point in the batch
         # bmu_loc is BS, num points
@@ -284,7 +291,7 @@ class SOM(nn.Module):
             for loc in bmu_loc:
                 bmu_distance_squares.append(self.get_bmu_distance_squares(loc))
             bmu_distance_squares = torch.stack(bmu_distance_squares)
-        neighbourhood_func = torch.exp(torch.neg(torch.div(bmu_distance_squares, 2 * sigma_op**2 + 1e-5)))
+        neighbourhood_func = torch.exp(torch.neg(torch.div(bmu_distance_squares, 2 * sigma_op ** 2 + 1e-5)))
         learning_rate_multiplier = alpha_op * neighbourhood_func
 
         # Take the difference of centroids with centroids and weight it with gaussian
@@ -300,6 +307,9 @@ class SOM(nn.Module):
         delta = torch.mean(delta, dim=0)
         new_weights = torch.add(self.centroids, delta)
         self.centroids = new_weights
+        # if torch.cuda.is_available():
+        #     torch.cuda.synchronize()
+        # print('time for the rest : ', time.perf_counter() - a)
         return bmu_loc, torch.mean(mindist)
 
     def inference_call(self, x, n_bmu=1):
@@ -382,6 +392,8 @@ class SOM(nn.Module):
                     if logfile is not None:
                         logfile.write(f'{epoch} {self.step} {self.alpha_op} {self.sigma_op} {error} {runtime}\n')
                 self.step += batch_size
+                # if self.step > 10 * batch_size:
+                #     sys.exit()
         self.compute_umat(unfold=unfold, normalize=normalize_umat)
         if do_compute_all_dists:
             self.compute_all_dists()
@@ -510,6 +522,7 @@ class SOM(nn.Module):
         """
         Compute the U-matrix based on a map of centroids and their connectivity.
         """
+
         def neighbor_dim2_toric(p, s):
             """
             Efficient toric neighborhood function for 2D SOM.
@@ -552,14 +565,15 @@ class SOM(nn.Module):
             else:
                 neighbors = tuple(np.asarray(neighbor_dim2_grid(point, shape), dtype='int').T)
 
-            smap_torch, neuron_torch = torch.from_numpy(smap[neighbors]), torch.from_numpy(neuron[None])
+            smap_torch, neuron_torch = torch.from_numpy(smap[neighbors]).to(self.device), \
+                                       torch.from_numpy(neuron[None]).to(self.device)
             torch_cdists = self.metric(smap_torch, neuron_torch)
-            cdists = torch_cdists.numpy()
+            cdists = torch_cdists.cpu().numpy()
             umatrix[point] = cdists.mean()
 
             adjmat['row'].extend([
-                np.ravel_multi_index(point, shape),
-            ] * len(neighbors[0]))
+                                     np.ravel_multi_index(point, shape),
+                                 ] * len(neighbors[0]))
             adjmat['col'].extend(np.ravel_multi_index(neighbors, shape))
             adjmat['data'].extend(cdists[:, 0])
         if rmsd:
@@ -709,7 +723,7 @@ if __name__ == '__main__':
 
     # Create SOM
     n = 10
-    somsize = n**2
+    somsize = n ** 2
     nsamples = X.shape[0]
     dim = X.shape[1]
     niter = 5
