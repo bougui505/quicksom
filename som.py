@@ -36,6 +36,7 @@
 #############################################################################
 
 import sys
+import datetime
 import torch
 import torch.nn as nn
 import time
@@ -78,7 +79,9 @@ def build_dataloader(dataset, num_workers, batch_size, shuffle=True):
     if not isinstance(dataset, torch.utils.data.Dataset) and not isinstance(dataset, torch.utils.data.DataLoader):
         dataset = ArrayDataset(dataset)
     if isinstance(dataset, torch.utils.data.Dataset):
-        dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=shuffle,
+        dataloader = torch.utils.data.DataLoader(dataset,
+                                                 batch_size=batch_size,
+                                                 shuffle=shuffle,
                                                  num_workers=num_workers)
     if isinstance(dataset, torch.utils.data.DataLoader):
         dataloader = dataset
@@ -109,7 +112,6 @@ class SOM(nn.Module):
     :param p_norm: p value for the p-norm distance to calculate between each vector pair for torch.cdist
     :param centroids: Initial som map to use. No random initialization
      """
-
     def __init__(self,
                  m,
                  n,
@@ -248,7 +250,7 @@ class SOM(nn.Module):
             return 1.0 - it / tot
         # half the lr 20 times
         if self.sched == 'half':
-            return 0.5 ** int(20 * it / tot)
+            return 0.5**int(20 * it / tot)
         # decay from 1 to exp(-5)
         if self.sched == 'exp':
             return np.exp(-5 * it / tot)
@@ -291,7 +293,7 @@ class SOM(nn.Module):
             for loc in bmu_loc:
                 bmu_distance_squares.append(self.get_bmu_distance_squares(loc))
             bmu_distance_squares = torch.stack(bmu_distance_squares)
-        neighbourhood_func = torch.exp(torch.neg(torch.div(bmu_distance_squares, 2 * sigma_op ** 2 + 1e-5)))
+        neighbourhood_func = torch.exp(torch.neg(torch.div(bmu_distance_squares, 2 * sigma_op**2 + 1e-5)))
         learning_rate_multiplier = alpha_op * neighbourhood_func
 
         # Take the difference of centroids with centroids and weight it with gaussian
@@ -384,10 +386,12 @@ class SOM(nn.Module):
                 learning_error.append(error)
                 if not self.step % print_each:
                     runtime = time.perf_counter() - start
+                    eta = total_steps * runtime / (self.step + batch_size) - runtime
                     print(
                         f'{epoch + 1}/{n_epoch}: {self.step}/{total_steps} '
                         f'| alpha: {self.alpha_op:4f} | sigma: {self.sigma_op:4f} '
-                        f'| error: {error:4f} | time {runtime:4f}',
+                        f'| error: {error:4f} | time: {str(datetime.timedelta(seconds=runtime))} '
+                        f'| eta: {str(datetime.timedelta(seconds=eta))}',
                         flush=True)
                     if logfile is not None:
                         logfile.write(f'{epoch} {self.step} {self.alpha_op} {self.sigma_op} {error} {runtime}\n')
@@ -522,7 +526,6 @@ class SOM(nn.Module):
         """
         Compute the U-matrix based on a map of centroids and their connectivity.
         """
-
         def neighbor_dim2_toric(p, s):
             """
             Efficient toric neighborhood function for 2D SOM.
@@ -572,8 +575,8 @@ class SOM(nn.Module):
             umatrix[point] = cdists.mean()
 
             adjmat['row'].extend([
-                                     np.ravel_multi_index(point, shape),
-                                 ] * len(neighbors[0]))
+                np.ravel_multi_index(point, shape),
+            ] * len(neighbors[0]))
             adjmat['col'].extend(np.ravel_multi_index(neighbors, shape))
             adjmat['data'].extend(cdists[:, 0])
         if rmsd:
@@ -723,7 +726,7 @@ if __name__ == '__main__':
 
     # Create SOM
     n = 10
-    somsize = n ** 2
+    somsize = n**2
     nsamples = X.shape[0]
     dim = X.shape[1]
     niter = 5
