@@ -141,7 +141,8 @@ class SOM(nn.Module):
             self.metric = lambda x, y: torch.cdist(x, y, p=self.p_norm)
         else:
             self.metric = metric
-
+        self.pairwise_dist = None
+        self.bmus = None
         # optimization parameters
         self.sched = sched
         self.n_epoch = n_epoch
@@ -691,9 +692,7 @@ class SOM(nn.Module):
             cluster_att = self.cluster()
             self.cluster_att = cluster_att.flatten()
         if samples is None:
-            try:
-                self.bmus
-            except:
+            if self.bmus is None:
                 print('No existing BMUs in the SOM object, one needs data points to predict clusters on')
         else:
             bmus, error, labels = self.predict(samples, batch_size=batch_size)
@@ -714,6 +713,27 @@ class SOM(nn.Module):
             return self.cluster_att[flat_bmus], error
         else:
             return self.clusters_user.flatten()[flat_bmus], error
+
+    def get_pairwise_dist(self, num_workers=1, batch_size=10):
+        print('Computing pairwise distances between SOM centroids')
+        dataloader = build_dataloader(self.centroids.to('cpu'),
+                                      num_workers=num_workers,
+                                      batch_size=batch_size,
+                                      shuffle=False)
+        npts = len(dataloader.dataset)
+        nbatch = len(dataloader)
+        batch_size = npts // nbatch
+        pdist = []
+        for i, (label, batch) in enumerate(dataloader):
+            sys.stdout.write(f'{i + 1}/{len(dataloader) + 1}\r')
+            sys.stdout.flush()
+            batch = batch.to(self.device)
+            dists = self.metric(batch, self.centroids).flatten()
+            pdist.extend(list(dists.to('cpu')))
+        pdist = np.asarray(pdist)
+        pdist = pdist.reshape((self.m * self.n, ) * 2)
+        self.pairwise_dist = pdist
+        return pdist
 
 
 if __name__ == '__main__':
