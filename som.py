@@ -62,6 +62,7 @@ from skimage.feature import peak_local_max
 # from skimage import filters
 
 from sklearn.cluster import AgglomerativeClustering
+from sklearn.manifold import MDS
 
 
 class ArrayDataset(torch.utils.data.Dataset):
@@ -86,6 +87,23 @@ def build_dataloader(dataset, num_workers, batch_size, shuffle=True):
     if isinstance(dataset, torch.utils.data.DataLoader):
         dataloader = dataset
     return dataloader
+
+
+def check_symmetric(a):
+    """
+    Check if array a is symmetric
+    """
+    relative_error = np.sqrt(np.mean((a - a.T)**2)) / np.sqrt((a**2).mean())
+    return relative_error
+
+
+def symmetrize(a):
+    """
+    symmetrize array a. Return the symmetrized array and the relative error
+    """
+    a_sym = (a + a.T) / 2.
+    relative_error = np.sqrt(np.mean((a - a_sym)**2)) / np.sqrt((a**2).mean())
+    return a_sym, relative_error
 
 
 class SOM(nn.Module):
@@ -143,6 +161,7 @@ class SOM(nn.Module):
             self.metric = metric
         self.pairwise_dist = None
         self.bmus = None
+        self.mds = None
         # optimization parameters
         self.sched = sched
         self.n_epoch = n_epoch
@@ -734,6 +753,21 @@ class SOM(nn.Module):
         pdist = pdist.reshape((self.m * self.n, ) * 2)
         self.pairwise_dist = pdist
         return pdist
+
+    def mds_embedding(self):
+        print('MDS embedding')
+        if self.pairwise_dist is None:
+            self.get_pairwise_dist()
+        embedding = MDS(n_components=2, dissimilarity='precomputed', n_jobs=-1)
+        pdist = self.pairwise_dist.copy()
+        if (pdist < 0).any():
+            pdist -= pdist.min()
+        if check_symmetric(pdist) != 0.:
+            pdist, error = symmetrize(pdist)
+            print('Warning: The pairwise distance matrix is not symmetric')
+            print(f'Symmetrized array with a relative error of {error:.4g}')
+        self.mds = embedding.fit_transform(pdist)
+        return self.mds
 
 
 if __name__ == '__main__':
