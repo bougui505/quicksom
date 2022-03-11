@@ -80,7 +80,7 @@ def crop_mds(som, vmin, vmax):
     return x, y, z
 
 
-def levenshtein(string, threshold, arr):
+def stringfilter(string, threshold, arr):
     """
     see: https://stackoverflow.com/a/38986394/1679629
     """
@@ -94,14 +94,13 @@ def levenshtein(string, threshold, arr):
 
     dists = np.asarray([matchdist(string, e) for e in arr])
     sel = dists <= threshold
-    inds = np.where(sel)
-    return inds
+    return sel
 
 
 def filter_bmus(som, text, threshold=0.):
     labels = som.labels
-    inds = levenshtein(string=text, threshold=threshold, arr=labels)
-    return inds[0]
+    sel = stringfilter(string=text, threshold=threshold, arr=labels)
+    return sel
 
 
 if __name__ == '__main__':
@@ -125,16 +124,22 @@ if __name__ == '__main__':
 
         # Text input to filter bmus
         instr = st.text_input(label='Filter BMUs based on label')
+        bmu_selection = None
         if instr is not None and len(instr) > 0:
-            inds = filter_bmus(som, instr)
-            nmatch = len(inds)
-            st.write(f'{nmatch} data match: {inds}')
+            bmu_selection = filter_bmus(som, instr)
+            nmatch = bmu_selection.sum()
+            st.write(f'{nmatch} data match')
 
         umat = crop_umat(som, vmin=vmin_setter, vmax=vmax_setter)
         mds = crop_mds(som, vmin=vmin_setter, vmax=vmax_setter)
         fig, axs = plt.subplots(nrows=2, figsize=(10, 10))
         img = axs[0].matshow(umat, cmap='coolwarm', aspect='auto')
         axs[1].scatter(mds[0], mds[1], c=mds[2], cmap='coolwarm')
+        if bmu_selection is not None:
+            selected_cells = som.bmus[bmu_selection]
+            axs[0].scatter(selected_cells[:, 1], selected_cells[:, 0], color='cyan')
+            selected_mds = som.mds[np.ravel_multi_index(tuple(selected_cells.T), (som.m, som.n))]
+            axs[1].scatter(selected_mds[:, 1], selected_mds[:, 0], color='cyan')
         fig.colorbar(img, ax=axs.ravel().tolist())
         st.pyplot(fig=fig)
 
