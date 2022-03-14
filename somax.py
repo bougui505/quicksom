@@ -273,6 +273,58 @@ class SOM():
         self.centroids = new_weights
         return bmu_loc, jnp.mean(mindist)
 
+    @partial(jax.jit, static_argnums=(0,))
+    def static__call__(self, x, learning_rate_op, self_centroids):
+        """
+        timing info : now most of the time is in pdist ~1e-3s and the rest is 0.2e-3
+        :param x: the minibatch
+        :param learning_rate_op: the learning rate to apply to the batch
+        :return:
+        """
+        # Make an inference call
+        # Compute distances from batch to centroids
+        x, batch_size = self.find_batchsize(x)
+        dists = self.metric(x, self_centroids)
+
+        # x is of shape (30,1,50), centroids of shape (100, 50)
+
+        # Find closest and retrieve the gaussian correlation matrix for each point in the batch
+        # bmu_loc is BS, num points
+        bmu_index = jnp.argmin(dists, -1)
+        mindist = jnp.take_along_axis(dists, bmu_index[:, None], axis=-1)
+        bmu_loc = self.locations[bmu_index].reshape(batch_size, 2)
+        # Compute the update
+
+        # Update LR
+        # It is a matrix of shape (BS, centroids) and tell for each input how much it will affect each centroid
+        alpha_op = self.alpha * learning_rate_op
+        sigma_op = self.sigma * learning_rate_op
+        if self.precompute:
+            bmu_distance_squares = self.distance_mat[bmu_index].reshape(batch_size, self.grid_size)
+        else:
+            bmu_distance_squares = []
+            for loc in bmu_loc:
+                bmu_distance_squares.append(self.get_bmu_distance_squares(loc))
+            bmu_distance_squares = jnp.stack(bmu_distance_squares)
+        neighbourhood_func = jnp.exp(-(bmu_distance_squares / (2 * sigma_op ** 2 + 1e-5)))
+        learning_rate_multiplier = alpha_op * neighbourhood_func
+
+        # Take the difference of centroids with input and weight it with gaussian
+        # x is (BS,1,dim)
+        # self.weights is (grid_size,dim)
+        # delta is (BS, grid_size, dim)
+        def flat_form(one_x, alpha, weight):
+            small_d = one_x - weight
+            mutliplied = small_d * alpha[:, None]
+            return mutliplied
+
+        vdelta = jax.vmap(flat_form, in_axes=(0, 0, None))
+        delta = vdelta(x, learning_rate_multiplier, self_centroids)
+        # Perform the update by taking the mean
+        delta = jnp.mean(delta, axis=0)
+        new_weights = self_centroids + delta
+        return bmu_loc, jnp.mean(mindist), new_weights
+
     def inference_call(self, x, n_bmu=1):
         """
         timing info : now most of the time is in pdist ~1e-3s and the rest is 0.2e-3
@@ -341,17 +393,20 @@ class SOM():
                 lr_step = self.scheduler(self.step, total_steps)
                 batch = batch.float().numpy()
                 batch = jax.device_put(batch, self.device)
-                bmu_loc, error = self.__call__(batch, learning_rate_op=lr_step)
+                bmu_loc, error, new_centroids = self.static__call__(batch,
+                                                                    learning_rate_op=lr_step,
+                                                                    self_centroids=som.centroids)
+                self.centroids = new_centroids
                 learning_error.append(error)
                 if not self.step % print_each:
                     runtime = time.perf_counter() - start
-                    print(
-                        f'{epoch + 1}/{n_epoch}: {self.step}/{total_steps} '
-                        f'| alpha: {self.alpha_op:4f} | sigma: {self.sigma_op:4f} '
-                        f'| error: {error:4f} | time {runtime:4f}',
-                        flush=True)
+                    print(f'{epoch + 1}/{n_epoch}: {self.step}/{total_steps} '
+                          f'| alpha: {self.alpha * lr_step:4f} | sigma: {self.sigma * lr_step:4f} '
+                          f'| error: {error:4f} | time {runtime:4f}'
+                          , flush=True)
                     if logfile is not None:
-                        logfile.write(f'{epoch} {self.step} {self.alpha_op} {self.sigma_op} {error} {runtime}\n')
+                        logfile.write(
+                            f'{epoch} {self.step} {self.alpha * lr_step} {self.sigma * lr_step} {error} {runtime}\n')
                 self.step += batch_size
                 # if self.step > 10 * batch_size:
                 #     sys.exit()
@@ -674,11 +729,42 @@ class SOM():
             return self.clusters_user.flatten()[flat_bmus], error
 
 
+def time_som(som, X):
+    som.alpha = 0.5
+    import time
+
+    X = jax.device_put(X)
+    a = time.perf_counter()
+    for _ in range(1000):
+        som(X[:30], 1)
+    jax.block_until_ready(som.centroids)
+    print('total time : ', time.perf_counter() - a)
+
+    som.alpha = 0.5
+    import time
+
+    a = time.perf_counter()
+    # First call is compilation
+    _, _, new_centroids = som.static__call__(X[:30], 1, som.centroids)
+    som.centroids = new_centroids
+    jax.block_until_ready(som.centroids)
+    print('compilation time : ', time.perf_counter() - a)
+
+    # Second call is runtime
+    a = time.perf_counter()
+    for _ in range(1000):
+        _, _, new_centroids = som.static__call__(X[:30], 1, som.centroids)
+        som.centroids = new_centroids
+    jax.block_until_ready(som.centroids)
+    print('total time : ', time.perf_counter() - a)
+    sys.exit()
+
+
 if __name__ == '__main__':
     pass
     # Prepare data
     np.random.seed(0)
-    X = np.random.rand(10000, 50)
+    X = np.random.rand(1000, 500)
 
     # Create SOM
     n = 10
