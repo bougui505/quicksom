@@ -36,6 +36,7 @@
 #############################################################################
 
 import sys
+import datetime
 import torch
 import torch.nn as nn
 import time
@@ -61,6 +62,7 @@ from skimage.feature import peak_local_max
 # from skimage import filters
 
 from sklearn.cluster import AgglomerativeClustering
+from sklearn.manifold import MDS
 
 try:
     import functorch
@@ -86,11 +88,30 @@ def build_dataloader(dataset, num_workers, batch_size, shuffle=True):
     if not isinstance(dataset, torch.utils.data.Dataset) and not isinstance(dataset, torch.utils.data.DataLoader):
         dataset = ArrayDataset(dataset)
     if isinstance(dataset, torch.utils.data.Dataset):
-        dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=shuffle,
+        dataloader = torch.utils.data.DataLoader(dataset,
+                                                 batch_size=batch_size,
+                                                 shuffle=shuffle,
                                                  num_workers=num_workers)
     if isinstance(dataset, torch.utils.data.DataLoader):
         dataloader = dataset
     return dataloader
+
+
+def check_symmetric(a):
+    """
+    Check if array a is symmetric
+    """
+    relative_error = np.sqrt(np.mean((a - a.T)**2)) / np.sqrt((a**2).mean())
+    return relative_error
+
+
+def symmetrize(a):
+    """
+    symmetrize array a. Return the symmetrized array and the relative error
+    """
+    a_sym = (a + a.T) / 2.
+    relative_error = np.sqrt(np.mean((a - a_sym)**2)) / np.sqrt((a**2).mean())
+    return a_sym, relative_error
 
 
 class SOM(nn.Module):
@@ -117,7 +138,6 @@ class SOM(nn.Module):
     :param p_norm: p value for the p-norm distance to calculate between each vector pair for torch.cdist
     :param centroids: Initial som map to use. No random initialization
      """
-
     def __init__(self,
                  m,
                  n,
@@ -147,7 +167,9 @@ class SOM(nn.Module):
             self.metric = lambda x, y: torch.cdist(x, y, p=self.p_norm)
         else:
             self.metric = metric
-
+        self.pairwise_dist = None
+        self.bmus = None
+        self.mds = None
         # optimization parameters
         self.sched = sched
         self.n_epoch = n_epoch
@@ -255,7 +277,7 @@ class SOM(nn.Module):
             return 1.0 - it / tot
         # half the lr 20 times
         if self.sched == 'half':
-            return 0.5 ** int(20 * it / tot)
+            return 0.5**int(20 * it / tot)
         # decay from 1 to exp(-5)
         if self.sched == 'exp':
             return np.exp(-5 * it / tot)
@@ -292,7 +314,7 @@ class SOM(nn.Module):
             for loc in bmu_loc:
                 bmu_distance_squares.append(self.get_bmu_distance_squares(loc))
             bmu_distance_squares = torch.stack(bmu_distance_squares)
-        neighbourhood_func = torch.exp(torch.neg(torch.div(bmu_distance_squares, 2 * sigma_op ** 2 + 1e-5)))
+        neighbourhood_func = torch.exp(torch.neg(torch.div(bmu_distance_squares, 2 * sigma_op**2 + 1e-5)))
         learning_rate_multiplier = alpha_op * neighbourhood_func
 
         # Take the difference of centroids with input and weight it with gaussian
@@ -392,10 +414,12 @@ class SOM(nn.Module):
                 learning_error.append(error)
                 if not self.step % print_each:
                     runtime = time.perf_counter() - start
+                    eta = total_steps * runtime / (self.step + batch_size) - runtime
                     print(
                         f'{epoch + 1}/{n_epoch}: {self.step}/{total_steps} '
                         f'| alpha: {self.alpha_op:4f} | sigma: {self.sigma_op:4f} '
-                        f'| error: {error:4f} | time {runtime:4f}',
+                        f'| error: {error:4f} | time: {str(datetime.timedelta(seconds=runtime))} '
+                        f'| eta: {str(datetime.timedelta(seconds=eta))}',
                         flush=True)
                     if logfile is not None:
                         logfile.write(f'{epoch} {self.step} {self.alpha_op} {self.sigma_op} {error} {runtime}\n')
@@ -530,7 +554,6 @@ class SOM(nn.Module):
         """
         Compute the U-matrix based on a map of centroids and their connectivity.
         """
-
         def neighbor_dim2_toric(p, s):
             """
             Efficient toric neighborhood function for 2D SOM.
@@ -580,8 +603,8 @@ class SOM(nn.Module):
             umatrix[point] = cdists.mean()
 
             adjmat['row'].extend([
-                                     np.ravel_multi_index(point, shape),
-                                 ] * len(neighbors[0]))
+                np.ravel_multi_index(point, shape),
+            ] * len(neighbors[0]))
             adjmat['col'].extend(np.ravel_multi_index(neighbors, shape))
             adjmat['data'].extend(cdists[:, 0])
         if rmsd:
@@ -696,9 +719,7 @@ class SOM(nn.Module):
             cluster_att = self.cluster()
             self.cluster_att = cluster_att.flatten()
         if samples is None:
-            try:
-                self.bmus
-            except:
+            if self.bmus is None:
                 print('No existing BMUs in the SOM object, one needs data points to predict clusters on')
         else:
             bmus, error, labels = self.predict(samples, batch_size=batch_size)
@@ -720,6 +741,42 @@ class SOM(nn.Module):
         else:
             return self.clusters_user.flatten()[flat_bmus], error
 
+    def get_pairwise_dist(self, num_workers=1, batch_size=10):
+        print('Computing pairwise distances between SOM centroids')
+        dataloader = build_dataloader(self.centroids.to('cpu'),
+                                      num_workers=num_workers,
+                                      batch_size=batch_size,
+                                      shuffle=False)
+        npts = len(dataloader.dataset)
+        nbatch = len(dataloader)
+        batch_size = npts // nbatch
+        pdist = []
+        for i, (label, batch) in enumerate(dataloader):
+            sys.stdout.write(f'{i + 1}/{len(dataloader) + 1}\r')
+            sys.stdout.flush()
+            batch = batch.to(self.device)
+            dists = self.metric(batch, self.centroids).flatten()
+            pdist.extend(list(dists.to('cpu')))
+        pdist = np.asarray(pdist)
+        pdist = pdist.reshape((self.m * self.n, ) * 2)
+        self.pairwise_dist = pdist
+        return pdist
+
+    def mds_embedding(self):
+        print('MDS embedding')
+        if self.pairwise_dist is None:
+            self.get_pairwise_dist()
+        embedding = MDS(n_components=2, dissimilarity='precomputed', n_jobs=-1)
+        pdist = self.pairwise_dist.copy()
+        if (pdist < 0).any():
+            pdist -= pdist.min()
+        if check_symmetric(pdist) != 0.:
+            pdist, error = symmetrize(pdist)
+            print('Warning: The pairwise distance matrix is not symmetric')
+            print(f'Symmetrized array with a relative error of {error:.4g}')
+        self.mds = embedding.fit_transform(pdist)
+        return self.mds
+
 
 if __name__ == '__main__':
     pass
@@ -732,7 +789,7 @@ if __name__ == '__main__':
 
     # Create SOM
     n = 10
-    somsize = n ** 2
+    somsize = n**2
     nsamples = X.shape[0]
     dim = X.shape[1]
     niter = 5
