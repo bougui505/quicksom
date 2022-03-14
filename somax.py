@@ -1,47 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: UTF8 -*-
 
-#############################################################################
-# Authors: Vincent Mallet, Guillaume Bouvier	      	                    #
-# Copyright (c) 2021 Institut Pasteur                                       #
-#                 				                                            #
-#                                                                           #
-#  Redistribution and use in source and binary forms, with or without       #
-#  modification, are permitted provided that the following conditions       #
-#  are met:                                                                 #
-#                                                                           #
-#  1. Redistributions of source code must retain the above copyright        #
-#  notice, this list of conditions and the following disclaimer.            #
-#  2. Redistributions in binary form must reproduce the above copyright     #
-#  notice, this list of conditions and the following disclaimer in the      #
-#  documentation and/or other materials provided with the distribution.     #
-#  3. Neither the name of the copyright holder nor the names of its         #
-#  contributors may be used to endorse or promote products derived from     #
-#  this software without specific prior written permission.                 #
-#                                                                           #
-#  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS      #
-#  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT        #
-#  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR    #
-#  A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT     #
-#  HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,   #
-#  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT         #
-#  LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,    #
-#  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY    #
-#  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT      #
-#  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE    #
-#  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.     #
-#                                                                           #
-#  This program is free software: you can redistribute it and/or modify     #
-#                                                                           #
-#############################################################################
-
 import sys
-import torch
-import torch.nn as nn
 import time
 import itertools
 import matplotlib.pyplot as plt
 import os
+from functools import partial
 
 import numpy as np
 import scipy.spatial
@@ -49,26 +14,23 @@ import scipy.sparse
 
 from scipy import ndimage as ndi
 import scipy.sparse.csgraph as graph
-
 from skimage.feature import peak_local_max
-
-# import skimage
-# from skimage.morphology import disk
-# from skimage.filters import rank
-# from skimage.segmentation import watershed
-# from skimage.segmentation import morphological_geodesic_active_contour, felzenszwalb, slic
-# from skimage.feature import peak_local_max
-# from skimage import filters
-
 from sklearn.cluster import AgglomerativeClustering
 
-try:
-    import functorch
+import torch
+from torch.utils.data import DataLoader, Dataset
+import jax
+import jax.numpy as jnp
 
-    FUNCTORCH_AVAIL = True
-except ImportError:
-    print("Running without functorch, please install it")
-    FUNCTORCH_AVAIL = False
+
+def distance_one(x, y):
+    return jnp.linalg.norm(x - y)
+
+
+jax_cdist_0 = jax.vmap(distance_one, (None, 0))
+jax_cdist = jax.vmap(jax_cdist_0, (0, None))
+jax_cdist_0 = jax.jit(jax_cdist_0)
+jax_cdist = jax.jit(jax_cdist)
 
 
 class ArrayDataset(torch.utils.data.Dataset):
@@ -87,13 +49,13 @@ def build_dataloader(dataset, num_workers, batch_size, shuffle=True):
         dataset = ArrayDataset(dataset)
     if isinstance(dataset, torch.utils.data.Dataset):
         dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=shuffle,
-                                                 num_workers=num_workers)
+                                                 num_workers=num_workers, pin_memory=True)
     if isinstance(dataset, torch.utils.data.DataLoader):
         dataloader = dataset
     return dataloader
 
 
-class SOM(nn.Module):
+class SOM():
     """
     2-D Self-Organizing Map with Gaussian Neighbourhood function
     and linearly decreasing learning rate.
@@ -126,7 +88,7 @@ class SOM(nn.Module):
                  sigma=None,
                  n_epoch=2,
                  sched='linear',
-                 device='cpu',
+                 device=jax.devices()[0],
                  precompute=True,
                  periodic=False,
                  metric=None,
@@ -144,7 +106,7 @@ class SOM(nn.Module):
         self.periodic = periodic
         self.p_norm = p_norm
         if metric is None:
-            self.metric = lambda x, y: torch.cdist(x, y, p=self.p_norm)
+            self.metric = jax_cdist
         else:
             self.metric = metric
 
@@ -161,33 +123,19 @@ class SOM(nn.Module):
             self.sigma = float(sigma)
 
         if centroids is None:
-            np_init = np.random.randn(m * n, dim)
-            self.centroids = torch.from_numpy(np_init).float().to(device=device)
-            # self.centroids = torch.randn(m * n, dim, device=device, dtype=torch.float)
+            self.centroids = jax.device_put(np.random.randn(m * n, dim), device=device)
         else:
             self.centroids = centroids
-        # self.centroids = torch.randn(m * n, dim, device=device, dtype=torch.double)
 
-        locs = [np.array([i, j]) for i in range(self.m) for j in range(self.n)]
-        self.locations = torch.LongTensor(np.array(locs)).to(device)
-        self.maprange = torch.stack([torch.tensor((self.m, self.n)) for i in range(self.m * self.n)]).float().to(device)
-
-        self.offset1 = torch.tensor([-self.m, -self.n], device=device)
-        self.offset2 = torch.tensor([self.m, self.n], device=device)
-        self.offset3 = torch.tensor([-self.m, 0], device=device)
-        self.offset4 = torch.tensor([self.m, 0], device=device)
-        self.offset5 = torch.tensor([0, -self.n], device=device)
-        self.offset6 = torch.tensor([0, self.n], device=device)
-        self.offset7 = torch.tensor([-self.m, self.n], device=device)
-        self.offset8 = torch.tensor([self.m, -self.n], device=device)
-
+        locs = np.stack([np.array([i, j]) for i in range(self.m) for j in range(self.n)])
+        self.locations = jax.device_put(locs, device=device)
         self.precompute = precompute
         if self.precompute:
             # Fast computation is only right for the periodic topology
             if self.periodic:
                 self.distance_mat = self.compute_all()
             else:
-                self.distance_mat = torch.stack([self.get_bmu_distance_squares(loc) for loc in self.locations])
+                self.distance_mat = jnp.stack([self.get_bmu_distance_squares(loc) for loc in self.locations])
         self.umat = None
 
         # Clustering parameters
@@ -198,7 +146,7 @@ class SOM(nn.Module):
         for k, v in vars(self).items():
             var = v
             try:
-                var = var.to(device)
+                var = jax.device_put(var, device=device)
                 self.__dict__[k] = var
                 # print(f'{k} -> {device}')
             except AttributeError:
@@ -206,38 +154,48 @@ class SOM(nn.Module):
                 # print(f'{k} ... {device}')
         return self
 
+    # @jax.jit
+    @partial(jax.jit, static_argnums=(0,))
     def get_bmu_distance_squares(self, bmu_loc):
-        bmu_loc = bmu_loc.unsqueeze(0).expand_as(self.locations).float()
         if self.periodic:
-            d1 = torch.sum(torch.pow(self.locations.float() - bmu_loc, 2), 1)
-            d2 = torch.sum(torch.pow(self.locations.float() + self.offset1 - bmu_loc, 2), 1)
-            d3 = torch.sum(torch.pow(self.locations.float() + self.offset2 - bmu_loc, 2), 1)
-            d4 = torch.sum(torch.pow(self.locations.float() + self.offset3 - bmu_loc, 2), 1)
-            d5 = torch.sum(torch.pow(self.locations.float() + self.offset4 - bmu_loc, 2), 1)
-            d6 = torch.sum(torch.pow(self.locations.float() + self.offset5 - bmu_loc, 2), 1)
-            d7 = torch.sum(torch.pow(self.locations.float() + self.offset6 - bmu_loc, 2), 1)
-            d8 = torch.sum(torch.pow(self.locations.float() + self.offset7 - bmu_loc, 2), 1)
-            d9 = torch.sum(torch.pow(self.locations.float() + self.offset8 - bmu_loc, 2), 1)
-            bmu_distance_squares, _ = torch.min(torch.stack([d1, d2, d3, d4, d5, d6, d7, d8, d9]), 0)
+            offsets = jnp.array([[0, 0],
+                                 [-self.m, -self.n],
+                                 [self.m, self.n],
+                                 [-self.m, 0],
+                                 [self.m, 0],
+                                 [0, -self.n],
+                                 [0, self.n],
+                                 [-self.m, self.n],
+                                 [self.m, -self.n]])
+            # offsets = jax.device_put(offsets)
+            offset_locations = jnp.array([self.locations + offset for offset in offsets])
+            batch_cdist = jax.vmap(jax_cdist_0, (None, 0))
+            distances = batch_cdist(bmu_loc, offset_locations)
+            min_dists = jnp.min(distances, axis=0)
+            return min_dists
         else:
-            bmu_distance_squares = torch.sum(torch.pow(self.locations.float() - bmu_loc, 2), 1)
-        return bmu_distance_squares
+            distances = jax_cdist_0(bmu_loc, self.locations)
+            return distances
 
     def compute_all(self):
-        """use the first line computation to get the other ones. Only works for periodic topology"""
+        """
+        Use the first line computation to get the other ones. Only works for periodic topology
+        """
 
         # get first line of the grid this could be sped up with the same trick but indexing might get tricky
         # 'first_line' is thus the m first rows of the distance matrix and has shape m, grid_size
+        import time
         first_line = [self.get_bmu_distance_squares(loc) for loc in self.locations[:self.m]]
-        first_line = torch.cat(first_line)
-        first_line = first_line.reshape((self.m, self.grid_size))
+        first_line = jnp.stack(first_line)
+        # We use square euclidean distance.
+        first_line = first_line ** 2
         other_lines = []
         for line in range(1, self.n):
-            a = first_line[:, (self.grid_size - line * self.m):]
-            b = first_line[:, :(self.grid_size - line * self.m)]
-            block = torch.cat((a, b), dim=1)
+            first_part = first_line[:, (self.grid_size - line * self.m):]
+            second_part = first_line[:, :(self.grid_size - line * self.m)]
+            block = jnp.concatenate((first_part, second_part), axis=1)
             other_lines.append(block)
-        all_lines = torch.cat((first_line, *other_lines), 0)
+        all_lines = jnp.concatenate((first_line, *other_lines), 0)
         return all_lines
 
     @staticmethod
@@ -245,9 +203,9 @@ class SOM(nn.Module):
         """
         Dimension needed is BS, 1(vector), dim
         """
-        if len(x.size()) == 1:
-            x.unsqueeze_(0)
-        batch_size = x.size()[0]
+        if len(x.shape) == 1:
+            return x[None, None, :], 1
+        batch_size = x.shape[0]
         return x[:, None, :], batch_size
 
     def scheduler(self, it, tot):
@@ -272,11 +230,14 @@ class SOM(nn.Module):
         # Compute distances from batch to centroids
         x, batch_size = self.find_batchsize(x)
         dists = self.metric(x, self.centroids)
+
+        # x is of shape (30,1,50), centroids of shape (100, 50)
+
         # Find closest and retrieve the gaussian correlation matrix for each point in the batch
         # bmu_loc is BS, num points
-        mindist, bmu_index = torch.min(dists, -1)
+        bmu_index = jnp.argmin(dists, -1)
+        mindist = jnp.take_along_axis(dists, bmu_index[:, None], axis=-1)
         bmu_loc = self.locations[bmu_index].reshape(batch_size, 2)
-
         # Compute the update
 
         # Update LR
@@ -291,34 +252,26 @@ class SOM(nn.Module):
             bmu_distance_squares = []
             for loc in bmu_loc:
                 bmu_distance_squares.append(self.get_bmu_distance_squares(loc))
-            bmu_distance_squares = torch.stack(bmu_distance_squares)
-        neighbourhood_func = torch.exp(torch.neg(torch.div(bmu_distance_squares, 2 * sigma_op ** 2 + 1e-5)))
+            bmu_distance_squares = jnp.stack(bmu_distance_squares)
+        neighbourhood_func = jnp.exp(-(bmu_distance_squares / (2 * sigma_op ** 2 + 1e-5)))
         learning_rate_multiplier = alpha_op * neighbourhood_func
 
         # Take the difference of centroids with input and weight it with gaussian
         # x is (BS,1,dim)
         # self.weights is (grid_size,dim)
         # delta is (BS, grid_size, dim)
-        expanded_x = x.expand(-1, self.grid_size, -1)
-        expanded_weights = self.centroids.unsqueeze(0).expand((batch_size, -1, -1))
-        delta = expanded_x - expanded_weights
-        delta = torch.mul(learning_rate_multiplier.reshape(*learning_rate_multiplier.size(), 1).expand_as(delta), delta)
+        def flat_form(one_x, alpha, weight):
+            small_d = one_x - weight
+            mutliplied = small_d * alpha[:, None]
+            return mutliplied
 
-        # def flat_form(one_x, alpha, weight):
-        #     small_d = one_x - weight
-        #     mutliplied = small_d * alpha[:, None]
-        #     return mutliplied
-        # if FUNCTORCH_AVAIL:
-        #     vdelta = functorch.vmap(flat_form, in_dims=(0, 0, None))
-        #     delta_2 = vdelta(x, learning_rate_multiplier, self.centroids)
-        #     diff = delta - delta_2
-        #     print(diff.mean())
-
+        vdelta = jax.vmap(flat_form, in_axes=(0, 0, None))
+        delta = vdelta(x, learning_rate_multiplier, self.centroids)
         # Perform the update by taking the mean
-        delta = torch.mean(delta, dim=0)
-        new_weights = torch.add(self.centroids, delta)
+        delta = jnp.mean(delta, axis=0)
+        new_weights = self.centroids + delta
         self.centroids = new_weights
-        return bmu_loc, torch.mean(mindist)
+        return bmu_loc, jnp.mean(mindist)
 
     def inference_call(self, x, n_bmu=1):
         """
@@ -386,8 +339,8 @@ class SOM(nn.Module):
         for epoch in range(n_epoch):
             for label, batch in dataloader:
                 lr_step = self.scheduler(self.step, total_steps)
-                batch = batch.to(self.device, non_blocking=True)
-                batch = batch.float()
+                batch = batch.float().numpy()
+                batch = jax.device_put(batch, self.device)
                 bmu_loc, error = self.__call__(batch, learning_rate_op=lr_step)
                 learning_error.append(error)
                 if not self.step % print_each:
@@ -724,11 +677,8 @@ class SOM(nn.Module):
 if __name__ == '__main__':
     pass
     # Prepare data
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
     np.random.seed(0)
     X = np.random.rand(10000, 50)
-    X = torch.from_numpy(X)
-    X = X.float()
 
     # Create SOM
     n = 10
@@ -738,7 +688,7 @@ if __name__ == '__main__':
     niter = 5
     batch_size = 30
     nsteps = int(nsamples / batch_size)
-    som = SOM(n, n, dim, n_epoch=niter, device=device, precompute=True, periodic=True)
+    som = SOM(n, n, dim, n_epoch=niter, precompute=True, periodic=True)
 
     # Fit it and get results
     learning_error = som.fit(X, batch_size=batch_size)
