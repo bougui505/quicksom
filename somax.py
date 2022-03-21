@@ -19,6 +19,7 @@ from sklearn.cluster import AgglomerativeClustering
 
 import torch
 from torch.utils.data import DataLoader, Dataset
+
 import jax
 import jax.numpy as jnp
 
@@ -52,7 +53,21 @@ def build_dataloader(dataset, num_workers, batch_size, shuffle=True):
                                                  num_workers=num_workers, pin_memory=True)
     if isinstance(dataset, torch.utils.data.DataLoader):
         dataloader = dataset
+    dataloader.collate_fn = jax_collate
+
     return dataloader
+
+
+def jax_collate(items):
+    """
+
+    :param items: items is a list of tuples (id, vector)
+    :return:
+    """
+    labels = [item[0] for item in items]
+    np_data = [item[1] for item in items]
+    np_data = np.stack(np_data)
+    return labels, np_data
 
 
 class SOM():
@@ -141,6 +156,7 @@ class SOM():
         # Clustering parameters
         self.cluster_att = None
         self.clusters_user = None
+        # self.to_device(device)
 
     def to_device(self, device):
         for k, v in vars(self).items():
@@ -391,11 +407,10 @@ class SOM():
         for epoch in range(n_epoch):
             for label, batch in dataloader:
                 lr_step = self.scheduler(self.step, total_steps)
-                batch = batch.float().numpy()
                 batch = jax.device_put(batch, self.device)
                 bmu_loc, error, new_centroids = self.static__call__(batch,
                                                                     learning_rate_op=lr_step,
-                                                                    self_centroids=som.centroids)
+                                                                    self_centroids=self.centroids)
                 self.centroids = new_centroids
                 learning_error.append(error)
                 if not self.step % print_each:
