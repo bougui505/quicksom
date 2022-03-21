@@ -219,6 +219,7 @@ class SOM(nn.Module):
         self.clusters_user = None
 
     def to_device(self, device):
+        self.device=device
         for k, v in vars(self).items():
             var = v
             try:
@@ -477,6 +478,10 @@ class SOM(nn.Module):
         errors = torch.cat(errors)
         errors = errors.cpu().numpy()
 
+        default_return = [bmus, errors, labels]
+        if return_density:
+            density /= density.sum()
+            default_return.append(density)
         # Optionnally compute errors
         if return_errors:
             quantization_error = np.mean(errors[:, :, 0])
@@ -484,14 +489,6 @@ class SOM(nn.Module):
             topo_error = np.sum(topo_dists > 1) / len(topo_dists)
             print(f'On these samples, the quantization error is {quantization_error:1f} '
                   f'and the topological error rate is {topo_error:1f}')
-            bmus = bmus[0, ...]
-            errors = errors[0, ...]
-
-        default_return = [bmus, errors, labels]
-        if return_density:
-            density /= density.sum()
-            default_return.append(density)
-        if return_errors:
             default_return.append(quantization_error)
             default_return.append(topo_error)
         return tuple(default_return)
