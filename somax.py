@@ -1,24 +1,23 @@
 #!/usr/bin/env python3
 # -*- coding: UTF8 -*-
 
-import sys
-import time
+import datetime
+from functools import partial
 import itertools
 import matplotlib.pyplot as plt
 import os
-from functools import partial
+import sys
+import time
 
 import numpy as np
 import scipy.spatial
 import scipy.sparse
 
-from scipy import ndimage as ndi
 import scipy.sparse.csgraph as graph
 from skimage.feature import peak_local_max
 from sklearn.cluster import AgglomerativeClustering
 
 import torch
-from torch.utils.data import DataLoader, Dataset
 
 import jax
 import jax.numpy as jnp
@@ -70,7 +69,7 @@ def jax_collate(items):
     return labels, np_data
 
 
-class SOM():
+class SOM:
     """
     2-D Self-Organizing Map with Gaussian Neighbourhood function
     and linearly decreasing learning rate.
@@ -152,7 +151,6 @@ class SOM():
         # Clustering parameters
         self.cluster_att = None
         self.clusters_user = None
-        # self.to_device(device)
 
     def to_device(self, device):
         for k, v in vars(self).items():
@@ -294,7 +292,7 @@ class SOM():
         new_weights = self_centroids + delta
         return bmu_loc, jnp.mean(mindist), new_weights
 
-    @partial(jax.jit, static_argnums=(0,))
+    # @partial(jax.jit, static_argnums=(0,))
     def inference_call_one(self, x):
         """
         timing info : now most of the time is in pdist ~1e-3s and the rest is 0.2e-3
@@ -310,8 +308,23 @@ class SOM():
         # Find closest and retrieve the gaussian correlation matrix for each point in the batch
         bmu_index = jnp.argmin(dists, -1)
         mindist = jnp.take_along_axis(dists, bmu_index[:, None], axis=-1)
-        bmu_loc = self.locations[bmu_index].reshape(batch_size, 2)
-        return bmu_loc, mindist
+        return bmu_index, mindist
+
+    # @partial(jax.jit, static_argnums=(0, 2))
+    def inference_call_two(self, x, n_bmu=2):
+        """
+        timing info : now most of the time is in pdist ~1e-3s and the rest is 0.2e-3
+        :param x:
+        :param it:
+        :return:
+        """
+        # Compute distances from batch to centroids
+        x, batch_size = self.find_batchsize(x)
+        dists = self.metric(x, self.centroids)
+        idx = np.argsort(dists, -1)
+        selected = idx[:, :1]
+        mindists = jnp.take_along_axis(dists, selected, axis=-1)
+        return selected, mindists
 
     def inference_call(self, x, n_bmu=1):
         """
@@ -325,18 +338,18 @@ class SOM():
             return self.inference_call_one(x)
         else:
             # In that case, return the bmu indices.
-            x, batch_size = self.find_batchsize(x)
-            dists = self.metric(x, self.centroids)
-            idx = jnp.argsort(dists, -1)
-            selected = idx[:, :n_bmu]
-            mindists = jnp.take_along_axis(dists, selected, axis=-1)
-            return selected, mindists
+            return self.inference_call_two(x, n_bmu)
+
+    def loc_from_idx(self, idx):
+        loc = self.locations[idx]
+        loc = jnp.reshape(loc, (-1, 2))
+        return loc
 
     def fit(self,
             dataset=None,
             batch_size=20,
             n_epoch=None,
-            print_each=20,
+            print_each=100,
             do_compute_all_dists=True,
             unfold=True,
             normalize_umat=True,
@@ -371,7 +384,7 @@ class SOM():
         start = time.perf_counter()
         learning_error = list()
         for epoch in range(n_epoch):
-            for label, batch in dataloader:
+            for i, (label, batch) in enumerate(dataloader):
                 lr_step = self.scheduler(self.step, total_steps)
                 batch = jax.device_put(batch, self.device)
                 bmu_loc, error, new_centroids = self.static_call(batch,
@@ -379,18 +392,18 @@ class SOM():
                                                                  self_centroids=self.centroids)
                 self.centroids = new_centroids
                 learning_error.append(error)
-                if not self.step % print_each:
+                if not i % print_each:
                     runtime = time.perf_counter() - start
+                    eta = total_steps * runtime / (self.step + batch_size) - runtime
                     print(f'{epoch + 1}/{n_epoch}: {self.step}/{total_steps} '
                           f'| alpha: {self.alpha * lr_step:4f} | sigma: {self.sigma * lr_step:4f} '
                           f'| error: {error:4f} | time {runtime:4f}'
-                          , flush=True)
+                          f'| eta: {str(datetime.timedelta(seconds=eta))}',
+                          flush=True)
                     if logfile is not None:
                         logfile.write(
                             f'{epoch} {self.step} {self.alpha * lr_step} {self.sigma * lr_step} {error} {runtime}\n')
                 self.step += batch_size
-                # if self.step > 10 * batch_size:
-                #     sys.exit()
         self.compute_umat(unfold=unfold, normalize=normalize_umat)
         if do_compute_all_dists:
             self.compute_all_dists()
@@ -398,53 +411,54 @@ class SOM():
             logfile.close()
         return learning_error
 
-    def predict(self, dataset=None, batch_size=100, return_density=False, return_errors=False,
-                num_workers=os.cpu_count()):
+    def predict(self, dataset, batch_size=100, print_each=100,
+                return_density=False, return_errors=False, num_workers=os.cpu_count()):
         """
         Batch the prediction to avoid memory overloading
         """
         dataloader = build_dataloader(dataset, num_workers=num_workers, batch_size=batch_size, shuffle=False)
-        npts = len(dataloader.dataset)
-        nbatch = len(dataloader)
-        batch_size = npts // nbatch
         bmus = list()
         errors = list()
         if return_density:
             density = np.zeros((self.m, self.n))
+        if return_errors:
+            bmu_indices = []
         labels = []
+        start = time.perf_counter()
         for i, (label, batch) in enumerate(dataloader):
-            sys.stdout.write(f'{i + 1}/{len(dataloader) + 1}\r')
-            sys.stdout.flush()
             batch = jax.device_put(batch, self.device)
-            bmu_loc, error = self.inference_call(batch, n_bmu=2 if return_errors else 1)
 
+            # If we want the topographic error, we need to compute more neighbors, and keep the indices
+            bmu_idx, error = self.inference_call(batch, n_bmu=2 if return_errors else 1)
+            if return_errors:
+                bmu_indices.append(bmu_idx)
+
+            # Then we can keep the first only and compute its bmu affectation
+            first_idx = bmu_idx[:, 0] if return_errors else bmu_idx
+            bmu_loc = self.loc_from_idx(first_idx)
             labels.extend(label)
-            if return_density:
-                density[tuple(bmu_loc.cpu().numpy().T)] += 1.
             bmus.append(bmu_loc)
+            if return_density:
+                density[tuple(np.asarray(bmu_loc).T)] += 1.
             if error.ndim == 0:
                 error = error[None, ...]
             errors.append(error)
         bmus = jnp.concatenate(bmus)
         bmus = np.asarray(bmus)
         errors = jnp.concatenate(errors)
-        errors = np.asarray(errors)
-
-        # Optionnally compute errors
-        if return_errors:
-            quantization_error = np.mean(errors[:, :, 0])
-            topo_dists = np.array([self.distance_mat[int(first), int(second)] for first, second in bmus])
-            topo_error = np.sum(topo_dists > 1) / len(topo_dists)
-            print(f'On these samples, the quantization error is {quantization_error:1f} '
-                  f'and the topological error rate is {topo_error:1f}')
-            bmus = bmus[0, ...]
-            errors = errors[0, ...]
+        errors = np.asarray(errors).flatten()
 
         default_return = [bmus, errors, labels]
         if return_density:
             density /= density.sum()
             default_return.append(density)
+        # Optionnally compute errors
         if return_errors:
+            quantization_error = np.mean(errors[:, :, 0])
+            topo_dists = np.array([self.distance_mat[int(first), int(second)] for first, second in bmu_indices])
+            topo_error = np.sum(topo_dists > 1) / len(topo_dists)
+            print(f'On these samples, the quantization error is {quantization_error:1f} '
+                  f'and the topological error rate is {topo_error:1f}')
             default_return.append(quantization_error)
             default_return.append(topo_error)
         return tuple(default_return)
@@ -538,8 +552,11 @@ class SOM():
         umatrix = np.zeros(shape)
         adjmat = {'data': [], 'row': [], 'col': []}
 
-        for point in itertools.product(*[range(s) for s in shape]):
-            neuron = smap[point]
+        start = time.perf_counter()
+        for i, point in enumerate(itertools.product(*[range(s) for s in shape])):
+            # if not i % 100:
+            #     print(f'{i} | time: {str(datetime.timedelta(seconds=time.perf_counter() - start))} ')
+            neuron = smap[point][None, :]
             if periodic:
                 neighbors = tuple(np.asarray(neighbor_dim2_toric(point, shape), dtype='int').T)
             else:
@@ -548,9 +565,7 @@ class SOM():
             cdists = np.asarray(self.metric(smap_neighbor, neuron))
             umatrix[point] = cdists.mean()
 
-            adjmat['row'].extend([
-                                     np.ravel_multi_index(point, shape),
-                                 ] * len(neighbors[0]))
+            adjmat['row'].extend([np.ravel_multi_index(point, shape), ] * len(neighbors[0]))
             adjmat['col'].extend(np.ravel_multi_index(neighbors, shape))
             adjmat['data'].extend(cdists[:, 0])
         if rmsd:

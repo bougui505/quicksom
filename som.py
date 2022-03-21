@@ -360,12 +360,11 @@ class SOM(nn.Module):
         # bmu_loc is BS, num points
         if n_bmu == 1:
             mindist, bmu_index = torch.min(dists, -1)
-            bmu_loc = self.locations[bmu_index].reshape(batch_size, 2)
-            return bmu_loc, mindist
+            return bmu_index, mindist
         else:
             # In that case, return the bmu indices.
             idx = torch.argsort(dists, -1)
-            selected = idx[:, :, :n_bmu]
+            selected = idx[:, :n_bmu]
             mindists = torch.take(dists, selected)
             return selected.squeeze(), mindists
 
@@ -373,7 +372,7 @@ class SOM(nn.Module):
             dataset=None,
             batch_size=20,
             n_epoch=None,
-            print_each=20,
+            print_each=100,
             do_compute_all_dists=True,
             unfold=True,
             normalize_umat=True,
@@ -408,13 +407,13 @@ class SOM(nn.Module):
         start = time.perf_counter()
         learning_error = list()
         for epoch in range(n_epoch):
-            for label, batch in dataloader:
+            for i, (label, batch) in enumerate(dataloader):
                 lr_step = self.scheduler(self.step, total_steps)
                 batch = batch.to(self.device, non_blocking=True)
                 batch = batch.float()
                 bmu_loc, error = self.__call__(batch, learning_rate_op=lr_step)
                 learning_error.append(error)
-                if not self.step % print_each:
+                if not i % print_each:
                     runtime = time.perf_counter() - start
                     eta = total_steps * runtime / (self.step + batch_size) - runtime
                     print(
@@ -435,28 +434,38 @@ class SOM(nn.Module):
             logfile.close()
         return learning_error
 
-    def predict(self, dataset=None, batch_size=100, return_density=False, return_errors=False,
-                num_workers=os.cpu_count()):
+    def loc_from_idx(self, idx):
+        loc = self.locations[idx].view(-1, 2)
+        return loc
+
+    def predict(self, dataset, batch_size=100, print_each=100,
+                return_density=False, return_errors=False, num_workers=os.cpu_count()):
         """
         Batch the prediction to avoid memory overloading
         """
         dataloader = build_dataloader(dataset, num_workers=num_workers, batch_size=batch_size, shuffle=False)
-        npts = len(dataloader.dataset)
-        nbatch = len(dataloader)
-        batch_size = npts // nbatch
-        # ndata = len(dataloader.dataset)
-        # bmus = np.zeros((ndata, 2))
         bmus = list()
         errors = list()
         if return_density:
             density = np.zeros((self.m, self.n))
+        if return_errors:
+            bmu_indices = []
         labels = []
+        start = time.perf_counter()
         for i, (label, batch) in enumerate(dataloader):
-            sys.stdout.write(f'{i + 1}/{len(dataloader) + 1}\r')
-            sys.stdout.flush()
+            if not i % print_each:
+                print(f'{i}/{len(dataloader)} | time: {str(datetime.timedelta(seconds=time.perf_counter() - start))} ')
             batch = batch.to(self.device)
             labels.extend(label)
-            bmu_loc, error = self.inference_call(batch, n_bmu=2 if return_errors else 1)
+
+            # If we want the topographic error, we need to compute more neighbors, and keep the indices
+            bmu_idx, error = self.inference_call(batch, n_bmu=2 if return_errors else 1)
+            if return_errors:
+                bmu_indices.append(bmu_idx)
+
+            # Then we can keep the first only and compute its bmu affectation
+            first_idx = bmu_idx[:, 0] if return_errors else bmu_idx
+            bmu_loc = self.loc_from_idx(first_idx)
             if return_density:
                 density[tuple(bmu_loc.cpu().numpy().T)] += 1.
             bmus.append(bmu_loc)
@@ -471,7 +480,7 @@ class SOM(nn.Module):
         # Optionnally compute errors
         if return_errors:
             quantization_error = np.mean(errors[:, :, 0])
-            topo_dists = np.array([self.distance_mat[int(first), int(second)] for first, second in bmus])
+            topo_dists = np.array([self.distance_mat[int(first), int(second)] for first, second in bmu_indices])
             topo_error = np.sum(topo_dists > 1) / len(topo_dists)
             print(f'On these samples, the quantization error is {quantization_error:1f} '
                   f'and the topological error rate is {topo_error:1f}')
@@ -734,9 +743,6 @@ class SOM(nn.Module):
                                       num_workers=num_workers,
                                       batch_size=batch_size,
                                       shuffle=False)
-        npts = len(dataloader.dataset)
-        nbatch = len(dataloader)
-        batch_size = npts // nbatch
         pdist = []
         for i, (label, batch) in enumerate(dataloader):
             sys.stdout.write(f'{i + 1}/{len(dataloader) + 1}\r')
