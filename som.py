@@ -403,7 +403,6 @@ class SOM(nn.Module):
         if n_epoch is None:
             n_epoch = self.n_epoch
         npts = len(dataloader.dataset)
-        batch_size = npts // nbatch
         total_steps = npts * n_epoch
         start = time.perf_counter()
         learning_error = list()
@@ -426,6 +425,7 @@ class SOM(nn.Module):
                     if logfile is not None:
                         logfile.write(f'{epoch} {self.step} {self.alpha_op} {self.sigma_op} {error} {runtime}\n')
                 self.step += batch_size
+                print(self.step)
                 # if self.step > 10 * batch_size:
                 #     sys.exit()
         self.compute_umat(unfold=unfold, normalize=normalize_umat)

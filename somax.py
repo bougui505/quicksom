@@ -379,7 +379,6 @@ class SOM:
         if n_epoch is None:
             n_epoch = self.n_epoch
         npts = len(dataloader.dataset)
-        batch_size = npts // nbatch
         total_steps = npts * n_epoch
         start = time.perf_counter()
         learning_error = list()
