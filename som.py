@@ -91,6 +91,7 @@ def build_dataloader(dataset, num_workers, batch_size, shuffle=True):
         dataloader = torch.utils.data.DataLoader(dataset,
                                                  batch_size=batch_size,
                                                  shuffle=shuffle,
+                                                 pin_memory=True,
                                                  num_workers=num_workers)
     if isinstance(dataset, torch.utils.data.DataLoader):
         dataloader = dataset
