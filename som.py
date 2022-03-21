@@ -434,7 +434,8 @@ class SOM(nn.Module):
             logfile.close()
         return learning_error
 
-    def predict(self, dataset=None, batch_size=100, return_density=False, num_workers=os.cpu_count()):
+    def predict(self, dataset=None, batch_size=100, return_density=False, return_errors=False,
+                num_workers=os.cpu_count()):
         """
         Batch the prediction to avoid memory overloading
         """
@@ -454,7 +455,7 @@ class SOM(nn.Module):
             sys.stdout.flush()
             batch = batch.to(self.device)
             labels.extend(label)
-            bmu_loc, error = self.inference_call(batch)
+            bmu_loc, error = self.inference_call(batch, n_bmu=2 if return_errors else 1)
             if return_density:
                 density[tuple(bmu_loc.cpu().numpy().T)] += 1.
             bmus.append(bmu_loc)
@@ -465,42 +466,25 @@ class SOM(nn.Module):
         bmus = bmus.cpu().numpy()
         errors = torch.cat(errors)
         errors = errors.cpu().numpy()
-        if not return_density:
-            return bmus, errors, labels
-        else:
+
+        # Optionnally compute errors
+        if return_errors:
+            quantization_error = np.mean(errors[:, :, 0])
+            topo_dists = np.array([self.distance_mat[int(first), int(second)] for first, second in bmus])
+            topo_error = np.sum(topo_dists > 1) / len(topo_dists)
+            print(f'On these samples, the quantization error is {quantization_error:1f} '
+                  f'and the topological error rate is {topo_error:1f}')
+            bmus = bmus[0, ...]
+            errors = errors[0, ...]
+
+        default_return = [bmus, errors, labels]
+        if return_density:
             density /= density.sum()
-            return bmus, errors, density, labels
-
-    def compute_error(self, samples, batch_size=100):
-        """
-        This is similar to predict, but we implement two quality measures instead of returning the prediction :
-        - quantization error is the error we usually use : the average distance between a sample and its bmu
-        - topological error is the rate at which the two first BMU of a point are not adjacent in the map.
-
-        Batch the prediction to avoid memory overloading
-        """
-        batch_size = min(batch_size, len(samples))
-        # Avoid empty batches
-        n_batch = (len(samples) - 1) // batch_size
-
-        bmus = np.zeros((len(samples), 2))
-        errors = list()
-
-        for i in range(n_batch + 1):
-            sys.stdout.write(f'{i + 1}/{n_batch + 1}\r')
-            sys.stdout.flush()
-            batch = samples[i * batch_size:i * batch_size + batch_size]
-            bmu_loc, error = self.inference_call(batch, n_bmu=2)
-            bmus[i * batch_size:i * batch_size + batch_size] = bmu_loc.cpu().numpy()
-            errors.append(error)
-        errors = torch.cat(errors)
-        errors = errors.cpu().numpy()
-        quantization_error = np.mean(errors[:, :, 0])
-        topo_dists = np.array([self.distance_mat[int(first), int(second)] for first, second in bmus])
-        topo_error = np.sum(topo_dists > 1) / len(topo_dists)
-        print(f'On these samples, the quantization error is {quantization_error:1f} '
-              f'and the topological error rate is {topo_error:1f}')
-        return quantization_error, topo_error
+            default_return.append(density)
+        if return_errors:
+            default_return.append(quantization_error)
+            default_return.append(topo_error)
+        return tuple(default_return)
 
     def plot_component_plane(self, plane, savefig=None, show=True):
         """
@@ -792,6 +776,7 @@ def time_som(som, X):
         torch.cuda.synchronize()
     print('total time : ', time.perf_counter() - a)
     sys.exit()
+
 
 if __name__ == '__main__':
     pass
