@@ -35,42 +35,26 @@
 #                                                                           #
 #############################################################################
 
+import os
 import sys
 import datetime
-import torch
-import torch.nn as nn
-import time
+# import dill
+import functools
 import itertools
 import matplotlib.pyplot as plt
-import os
+import pickle
+import time
 
 import numpy as np
 import scipy.spatial
 import scipy.sparse
-
-from scipy import ndimage as ndi
 import scipy.sparse.csgraph as graph
-
 from skimage.feature import peak_local_max
-
-# import skimage
-# from skimage.morphology import disk
-# from skimage.filters import rank
-# from skimage.segmentation import watershed
-# from skimage.segmentation import morphological_geodesic_active_contour, felzenszwalb, slic
-# from skimage.feature import peak_local_max
-# from skimage import filters
-
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.manifold import MDS
 
-try:
-    import functorch
-
-    FUNCTORCH_AVAIL = True
-except ImportError:
-    print("Running without functorch, please install it")
-    FUNCTORCH_AVAIL = False
+import torch
+import torch.nn as nn
 
 
 class ArrayDataset(torch.utils.data.Dataset):
@@ -166,7 +150,7 @@ class SOM(nn.Module):
         self.periodic = periodic
         self.p_norm = p_norm
         if metric is None:
-            self.metric = lambda x, y: torch.cdist(x, y, p=self.p_norm)
+            self.metric = functools.partial(torch.cdist, p=self.p_norm)
         else:
             self.metric = metric
         self.pairwise_dist = None
@@ -219,7 +203,7 @@ class SOM(nn.Module):
         self.clusters_user = None
 
     def to_device(self, device):
-        self.device=device
+        self.device = device
         for k, v in vars(self).items():
             var = v
             try:
@@ -329,15 +313,16 @@ class SOM(nn.Module):
         delta = expanded_x - expanded_weights
         delta = torch.mul(learning_rate_multiplier.reshape(*learning_rate_multiplier.size(), 1).expand_as(delta), delta)
 
+        # import functorch
+        #
         # def flat_form(one_x, alpha, weight):
         #     small_d = one_x - weight
         #     mutliplied = small_d * alpha[:, None]
         #     return mutliplied
-        # if FUNCTORCH_AVAIL:
-        #     vdelta = functorch.vmap(flat_form, in_dims=(0, 0, None))
-        #     delta_2 = vdelta(x, learning_rate_multiplier, self.centroids)
-        #     diff = delta - delta_2
-        #     print(diff.mean())
+        # vdelta = functorch.vmap(flat_form, in_dims=(0, 0, None))
+        # delta_2 = vdelta(x, learning_rate_multiplier, self.centroids)
+        # diff = delta - delta_2
+        # print(diff.mean())
 
         # Perform the update by taking the mean
         delta = torch.mean(delta, dim=0)
@@ -425,7 +410,6 @@ class SOM(nn.Module):
                     if logfile is not None:
                         logfile.write(f'{epoch} {self.step} {self.alpha_op} {self.sigma_op} {error} {runtime}\n')
                 self.step += batch_size
-                print(self.step)
                 # if self.step > 10 * batch_size:
                 #     sys.exit()
         self.compute_umat(unfold=unfold, normalize=normalize_umat)
@@ -651,7 +635,13 @@ class SOM(nn.Module):
         local_min = peak_local_max(-self.umat, min_distance=min_distance)
         n_local_min = local_min.shape[0]
         clusterer = AgglomerativeClustering(affinity='precomputed', linkage='average', n_clusters=n_local_min)
-        labels = clusterer.fit_predict(self.all_to_all_dist)
+        try:
+            labels = clusterer.fit_predict(self.all_to_all_dist)
+        except ValueError as e:
+            print(f'WARNING : The following error was catched : "{e}"\n'
+                  f'The clusterer yields zero clusters on the data.'
+                  ' You should train it more or gather more data')
+            labels = np.zeros(self.m * self.n)
         labels = labels.reshape((self.m, self.n))
 
         # IMAGE-BASED
@@ -766,6 +756,16 @@ class SOM(nn.Module):
             print(f'Symmetrized array with a relative error of {error:.4g}')
         self.mds = embedding.fit_transform(pdist)
         return self.mds
+
+    def save_pickle(self, outname):
+        self.to('cpu')
+        pickle.dump(self, open(outname, 'wb'))
+
+    @staticmethod
+    def load_pickle(inname, device='cpu'):
+        loaded_som = pickle.load(open(inname, 'rb'))
+        loaded_som.to(device)
+        return loaded_som
 
 
 def time_som(som, X):

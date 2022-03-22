@@ -787,3 +787,4 @@ if __name__ == '__main__':
     bmus, inference_error, labels = som.predict(X, batch_size=batch_size)
     predicted_clusts, errors = som.predict_cluster(X[45:56])
     print('some cluster for some random points are : ', predicted_clusts)
+
