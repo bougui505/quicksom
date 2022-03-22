@@ -146,6 +146,7 @@ class SOM:
                 self.distance_mat = self.compute_all()
             else:
                 self.distance_mat = jnp.stack([self.get_bmu_distance_squares(loc) for loc in self.locations])
+            self.distance_mat = jax.device_put(self.distance_mat, device=device)
         self.umat = None
 
         # Clustering parameters
@@ -153,15 +154,16 @@ class SOM:
         self.clusters_user = None
 
     def to_device(self, device):
+        """
+        Send the jax objects to device
+        :param device:
+        :return:
+        """
         for k, v in vars(self).items():
             var = v
-            try:
+            if isinstance(var, jax.interpreters.xla._DeviceArray):
                 var = jax.device_put(var, device=device)
                 self.__dict__[k] = var
-                # print(f'{k} -> {device}')
-            except AttributeError:
-                pass
-                # print(f'{k} ... {device}')
         return self
 
     # @jax.jit
@@ -751,6 +753,7 @@ if __name__ == '__main__':
     batch_size = 30
     nsteps = int(nsamples / batch_size)
     som = SOM(n, n, dim, n_epoch=niter, precompute=True, periodic=True)
+    som.to_device(jax.devices()[0])
 
     # Fit it and get results
     learning_error = som.fit(X, batch_size=batch_size)
