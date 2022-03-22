@@ -6,6 +6,7 @@ from functools import partial
 import itertools
 import matplotlib.pyplot as plt
 import os
+import pickle
 import sys
 import time
 
@@ -621,7 +622,13 @@ class SOM:
         local_min = peak_local_max(-self.umat, min_distance=min_distance)
         n_local_min = local_min.shape[0]
         clusterer = AgglomerativeClustering(affinity='precomputed', linkage='average', n_clusters=n_local_min)
-        labels = clusterer.fit_predict(self.all_to_all_dist)
+        try:
+            labels = clusterer.fit_predict(self.all_to_all_dist)
+        except ValueError as e:
+            print(f'WARNING : The following error was catched : "{e}"\n'
+                  f'The clusterer yields zero clusters on the data.'
+                  ' You should train it more or gather more data')
+            labels = np.zeros(self.m * self.n)
         labels = labels.reshape((self.m, self.n))
 
         # IMAGE-BASED
@@ -705,6 +712,26 @@ class SOM:
             return self.cluster_att[flat_bmus], error
         else:
             return self.clusters_user.flatten()[flat_bmus], error
+
+    def save_pickle(self, outname):
+        del self.device
+        del self.metric
+        pickle.dump(self, open(outname, 'wb'))
+
+    @staticmethod
+    def load_pickle(inname, metric=None, device=jax.devices()[0]):
+        loaded_som = pickle.load(open(inname, 'rb'))
+        if metric is None:
+            print('WARNING : loading a JAX SOM object without its metric results in the cdist metric being used '
+                  'because jitted functions can not be pickled. If you want to use another metric, please '
+                  'specify it in the SOM.load_pickle function')
+            metric = jax_cdist
+        loaded_som.device = device
+        loaded_som.metric = metric
+        loaded_som.centroids = jax.device_put(loaded_som.centroids, device=device)
+        loaded_som.locations = jax.device_put(loaded_som.locations, device=device)
+        loaded_som.distance_mat = jax.device_put(loaded_som.distance_mat, device=device)
+        return loaded_som
 
 
 def time_som(som, X):
