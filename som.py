@@ -761,7 +761,7 @@ class SOM(nn.Module):
         pickle.dump(self, open(outname, 'wb'))
 
     @staticmethod
-    def load_pickle(inname, device='cpu'):
+    def load_pickle(inname, device='cuda' if torch.cuda.is_available() else 'cpu'):
         loaded_som = pickle.load(open(inname, 'rb'))
         loaded_som.to_device(device)
         return loaded_som

@@ -8,7 +8,9 @@ import torch
 
 parser = argparse.ArgumentParser()
 # In/Out
-parser.add_argument("-i", "--in_name", required=True, help="name of the .npy to use")
+parser.add_argument("-i", "--in_name", default=None, help="Can be either a .npy file or a .dcd molecular dynamics "
+                                                          "trajectory. If you are providing a .dcd file, you "
+                                                          "should also provide a PDB and optional selections.")
 parser.add_argument("--pdb", help="If using directly a dcd file, we need to add a PDB for selection")
 parser.add_argument('--select', default='polymer', type=str, help='Atoms to select')
 parser.add_argument('--select_align', type=str, help='Atoms to select for structural alignment')
@@ -21,7 +23,7 @@ parser.add_argument('-j', '--jax', help='To use the jax version', action='store_
 # Optim
 parser.add_argument("--n_epoch", type=int, default=5, help="The number of iterations")
 parser.add_argument("--batch_size", type=int, default=100, help="The batch size to use")
-parser.add_argument("--num_workers", type=int, default=os.cpu_count() - 1, help="The batch size to use")
+parser.add_argument("--num_workers", type=int, default=os.cpu_count() - 1, help="The number of workers to use")
 parser.add_argument("--alpha", type=float, default=None, help="The initial learning rate")
 parser.add_argument("--sigma", type=float, default=None, help="The initial sigma for the convolution")
 parser.add_argument("--scheduler", default='linear', help="Which scheduler to use, can be linear, exp or half")
