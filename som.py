@@ -763,7 +763,7 @@ class SOM(nn.Module):
     @staticmethod
     def load_pickle(inname, device='cpu'):
         loaded_som = pickle.load(open(inname, 'rb'))
-        loaded_som.to(device)
+        loaded_som.to_device(device)
         return loaded_som
 
 

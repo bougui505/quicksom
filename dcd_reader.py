@@ -115,6 +115,7 @@ class DCDataset(torch.utils.data.Dataset):
         """
 
         self.dcdfilename = dcdfilename
+        self.dcdfile = None
         self.fastafile = None
         atoms_ids, align_ids = pymol_process(pdb=pdbfilename, selection=selection, select_align=selection_alignment)
         self.atoms_ids, self.align_ids = atoms_ids, align_ids
@@ -123,14 +124,11 @@ class DCDataset(torch.utils.data.Dataset):
             first_frame = dcd.read()
             coords = first_frame.xyz
             sel_coords = coords[atoms_ids]
-            self.dim = sel_coords.flatten().shape
+            self.dim = sel_coords.flatten().size
             self.reference_coords = coords[align_ids]
 
     def __len__(self):
         return self.len
-
-    def get_len(self):
-        pass
 
     def __getitem__(self, index):
         """
@@ -153,7 +151,7 @@ class DCDataset(torch.utils.data.Dataset):
         sel_coords = coords[self.atoms_ids]
         aligned_sel_coords = transform(sel_coords, R, t)
         flat_coords = aligned_sel_coords.flatten()
-        assert flat_coords.shape == self.dim
+        assert flat_coords.size == self.dim
         return index, flat_coords
 
 

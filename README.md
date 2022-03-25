@@ -124,6 +124,7 @@ predicted_clusts, errors = som.predict_cluster(X)
 To set these dependencies up using conda, just type :
 ```
 conda install -c schrodinger pymol pymol-psico
+pip install MDAnalysis
 ```
 
 The SOM algorithm can efficiently map MD trajectories for analysis and clustering purposes.

@@ -728,6 +728,8 @@ class SOM:
             metric = jax_cdist
         loaded_som.device = device
         loaded_som.metric = metric
+
+        # We need to manually choose which arrays are to be put, otherwise every numpy item ends up a jax object.
         loaded_som.centroids = jax.device_put(loaded_som.centroids, device=device)
         loaded_som.locations = jax.device_put(loaded_som.locations, device=device)
         loaded_som.distance_mat = jax.device_put(loaded_som.distance_mat, device=device)
@@ -787,4 +789,3 @@ if __name__ == '__main__':
     bmus, inference_error, labels = som.predict(X, batch_size=batch_size)
     predicted_clusts, errors = som.predict_cluster(X[45:56])
     print('some cluster for some random points are : ', predicted_clusts)
-
