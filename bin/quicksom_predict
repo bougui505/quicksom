@@ -43,17 +43,15 @@ if args.recompute_cluster:
 
 if args.in_name is not None:
     if args.in_name.endswith('.dcd'):
-        from quicksom.dcd_reader import DCDataset, workinit
+        from quicksom.dcd_reader import DCDataset
 
         dataset = DCDataset(pdbfilename=args.pdb, dcdfilename=args.in_name, selection=args.select,
                             selection_alignment=args.select_align)
         dim = dataset.dim
-        worker_init_fn = functools.partial(workinit, dcdfilename=args.in_name)
         dataset = torch.utils.data.DataLoader(dataset,
                                               batch_size=args.batch_size,
                                               shuffle=True,
                                               pin_memory=True,
-                                              worker_init_fn=worker_init_fn,
                                               num_workers=args.num_workers)
     else:
         dataset = numpy.load(args.in_name)

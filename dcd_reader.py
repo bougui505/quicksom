@@ -139,7 +139,9 @@ class DCDataset(torch.utils.data.Dataset):
         :return:
         """
         if self.dcdfile is None:
-            print(f'opening {self.dcdfilename}')
+            # print(f'opening {self.dcdfilename} with worker id :'
+            #       f' {torch.utils.data.get_worker_info().id} and obj id :'
+            #       f' {id(self.dcdfilename)} ')
             self.dcdfile = md.DCDFile(self.dcdfilename)
 
         self.dcdfile.seek(index)
@@ -155,19 +157,11 @@ class DCDataset(torch.utils.data.Dataset):
         return index, flat_coords
 
 
-def workinit(workerid, dcdfilename):
-    work_dataset = torch.utils.data.get_worker_info().dataset
-    work_dataset.dcdfile = md.DCDFile(dcdfilename)
-    print(f'{dcdfilename} opened with object id {id(work_dataset.dcdfile)} for worker {workerid}')
-
-
 def test_parallel(dataset, num_workers, batch_size=10, nloop=100):
-    work_init_fn = functools.partial(workinit, dcdfilename=dataset.dcdfilename)
     dataloader = torch.utils.data.DataLoader(dataset,
                                              batch_size=batch_size,
                                              shuffle=True,
-                                             num_workers=num_workers,
-                                             worker_init_fn=work_init_fn)
+                                             num_workers=num_workers)
     t0 = time.time()
     dataiter = itertools.cycle(dataloader)
     for i in range(nloop):
