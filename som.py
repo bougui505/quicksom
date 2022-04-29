@@ -164,7 +164,7 @@ class SOM(nn.Module):
         else:
             self.alpha = alpha
         if sigma is None:
-            self.sigma = np.sqrt(self.m * self.n) / 2.0
+            self.sigma = np.sqrt(self.m * self.n) / 4.0
         else:
             self.sigma = float(sigma)
 
@@ -375,7 +375,6 @@ class SOM(nn.Module):
             logfile.write('#epoch #iter #alpha #sigma #error #runtime\n')
         dataloader = build_dataloader(dataset, num_workers, batch_size=batch_size)
         nbatch = len(dataloader)
-
         if self.alpha is None:
             self.alpha = float((self.m * self.n) / nbatch)
             print('alpha:', self.alpha)
@@ -424,17 +423,18 @@ class SOM(nn.Module):
         return loc
 
     def predict(self, dataset, batch_size=100, print_each=100,
-                return_density=False, return_errors=False, num_workers=os.cpu_count()):
+                return_density=False, return_errors=True, num_workers=os.cpu_count()):
         """
         Batch the prediction to avoid memory overloading
         """
+        num_workers = 1
         dataloader = build_dataloader(dataset, num_workers=num_workers, batch_size=batch_size, shuffle=False)
         bmus = list()
         errors = list()
         if return_density:
             density = np.zeros((self.m, self.n))
         if return_errors:
-            bmu_indices = []
+            bmu_indices = list()
         labels = []
         start = time.perf_counter()
         for i, (label, batch) in enumerate(dataloader):
@@ -446,6 +446,7 @@ class SOM(nn.Module):
             # If we want the topographic error, we need to compute more neighbors, and keep the indices
             bmu_idx, error = self.inference_call(batch, n_bmu=2 if return_errors else 1)
             if return_errors:
+                bmu_idx = bmu_idx.cpu().detach().numpy()
                 bmu_indices.append(bmu_idx)
 
             # Then we can keep the first only and compute its bmu affectation
@@ -461,15 +462,16 @@ class SOM(nn.Module):
         bmus = bmus.cpu().numpy()
         errors = torch.cat(errors)
         errors = errors.cpu().numpy()
-
-        default_return = [bmus, errors, labels]
+        default_return = [bmus, errors[:,0], labels]
+        bmu_indices = np.concatenate(bmu_indices)
+        bmu_indices = np.asarray(bmu_indices)
         if return_density:
             density /= density.sum()
             default_return.append(density)
         # Optionnally compute errors
         if return_errors:
-            quantization_error = np.mean(errors[:, :, 0])
-            topo_dists = np.array([self.distance_mat[int(first), int(second)] for first, second in bmu_indices])
+            quantization_error = np.mean(errors[:, 0])
+            topo_dists = np.array([float(self.distance_mat[int(first), int(second)].cpu().detach().numpy()) for first, second in bmu_indices])
             topo_error = np.sum(topo_dists > 1) / len(topo_dists)
             print(f'On these samples, the quantization error is {quantization_error:1f} '
                   f'and the topological error rate is {topo_error:1f}')
