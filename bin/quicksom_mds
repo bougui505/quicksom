@@ -5,7 +5,7 @@
 # Author: Guillaume Bouvier -- guillaume.bouvier@pasteur.fr                 #
 # https://research.pasteur.fr/en/member/guillaume-bouvier/                  #
 # Copyright (c) 2021 Institut Pasteur                                       #
-#                 				                            #
+#                                                           #
 #                                                                           #
 #  Redistribution and use in source and binary forms, with or without       #
 #  modification, are permitted provided that the following conditions       #
@@ -144,8 +144,7 @@ def get_bmu_labels(groups, bmus):
     for label in labels:
         inds = np.where(groups == label)[0]
         bmus_label = bmus[inds]
-        bmus_label = np.ravel_multi_index((bmus_label[:, 0], bmus_label[:, 1]),
-                                          (som.m, som.n))
+        bmus_label = np.ravel_multi_index((bmus_label[:, 0], bmus_label[:, 1]), (som.m, som.n))
         bmus_label = np.unique(bmus_label)
         bmus_labels[label] = set(bmus_label)
     return bmus_labels
@@ -186,10 +185,7 @@ def som_to_dcd(topology, smap, sel='all', objname='somtraj', savetraj=False):
         print(f'Loading som frame {i} with shape {somframe.shape}')
         cmd.load_coords(list(somframe), f'{objname} and {sel}', state=i + 1)
         if i < n - 1:
-            cmd.create(objname,
-                       selection=f'{objname} and {sel}',
-                       source_state=i + 1,
-                       target_state=i + 2)
+            cmd.create(objname, selection=f'{objname} and {sel}', source_state=i + 1, target_state=i + 2)
     if savetraj:
         cmd.save_traj(f'{objname}.dcd', objname)
 
@@ -198,45 +194,25 @@ if __name__ == '__main__':
     import argparse
     # argparse.ArgumentParser(prog=None, usage=None, description=None, epilog=None, parents=[], formatter_class=argparse.HelpFormatter, prefix_chars='-', fromfile_prefix_chars=None, argument_default=None, conflict_handler='error', add_help=True, allow_abbrev=True, exit_on_error=True)
     parser = argparse.ArgumentParser(
-        description=
-        'Project the som space onto a 2D space using Multi Dimensional Scaling'
-    )
+        description='Project the som space onto a 2D space using Multi Dimensional Scaling')
     # parser.add_argument(name or flags...[, action][, nargs][, const][, default][, type][, choices][, required][, help][, metavar][, dest])
-    parser.add_argument('-i',
-                        '--in_name',
-                        help='name of the som to load',
-                        type=str,
-                        default='som.p')
+    parser.add_argument('-i', '--in_name', help='name of the som to load', type=str, default='som.p')
     parser.add_argument('--bmus', help='BMUS file', type=str)
 
     plot_options = parser.add_argument_group("Plotting options")
-    plot_options.add_argument('--plot',
-                              help='Plot the resulting MDS',
-                              action='store_true')
-    plot_options.add_argument(
-        '--savefig',
-        help='Save the figure to the given filename instead of showing it')
-    plot_options.add_argument('--rmsd',
-                              help='Scale the axis to RMSD unit',
-                              action='store_true')
+    plot_options.add_argument('--plot', help='Plot the resulting MDS', action='store_true')
+    plot_options.add_argument('--savefig', help='Save the figure to the given filename instead of showing it')
+    plot_options.add_argument('--rmsd', help='Scale the axis to RMSD unit', action='store_true')
     plot_options.add_argument(
         '--cmap',
-        help=
-        'Colormap to use (see: https://matplotlib.org/stable/tutorials/colors/colormaps.html)',
+        help='Colormap to use (see: https://matplotlib.org/stable/tutorials/colors/colormaps.html)',
         type=str,
         default='coolwarm')
-    plot_options.add_argument('--clim',
-                              help='Colorbar limits',
-                              nargs='+',
-                              type=float)
-    plot_options.add_argument('--size',
-                              help='Size of the scatter dots',
-                              default=2,
-                              type=float)
+    plot_options.add_argument('--clim', help='Colorbar limits', nargs='+', type=float)
+    plot_options.add_argument('--size', help='Size of the scatter dots', default=2, type=float)
     plot_options.add_argument(
         '--groups',
-        help=
-        'Color by group based on the given groups file (one value per line with the group id)',
+        help='Color by group based on the given groups file (one value per line with the group id)',
         type=str)
     plot_options.add_argument(
         '--colors',
@@ -244,52 +220,29 @@ if __name__ == '__main__':
         'Colors to use for the group projection. The number of colors must be equal to the number of groups plus one (for the overlap between groups).',
         nargs='+',
         type=str)
-    plot_options.add_argument('--subplots',
-                              help='Create one subplot for each group',
-                              action='store_true')
-    plot_options.add_argument('--xylabels',
-                              help='Labels for the x and y axes',
-                              type=str)
-    plot_options.add_argument('--scaling',
-                              help='Scaling factor for the mds',
-                              type=float,
-                              default=1.)
+    plot_options.add_argument('--subplots', help='Create one subplot for each group', action='store_true')
+    plot_options.add_argument('--xylabels', help='Labels for the x and y axes', type=str)
+    plot_options.add_argument('--scaling', help='Scaling factor for the mds', type=float, default=1.)
 
     project_options = parser.add_argument_group("Data projection options")
-    project_options.add_argument(
-        '--project',
-        help='read data (1 data point per line) from the given file to project',
-        type=str)
-    project_options.add_argument('--label',
-                                 help='Label for the data projected',
+    project_options.add_argument('--project',
+                                 help='read data (1 data point per line) from the given file to project',
                                  type=str)
-    project_options.add_argument(
-        '--ref',
-        help=
-        'Compute the RMSD between the reference file given as a PDB and the MDS-SOM map',
-        type=str,
-        nargs='+')
-    project_options.add_argument(
-        '--sel',
-        help='Selection of atom for the reference structure',
-        type=str)
-    project_options.add_argument('--cluster',
-                                 help='Project cluster data',
-                                 action='store_true')
+    project_options.add_argument('--label', help='Label for the data projected', type=str)
+    project_options.add_argument('--ref',
+                                 help='Compute the RMSD between the reference file given as a PDB and the MDS-SOM map',
+                                 type=str,
+                                 nargs='+')
+    project_options.add_argument('--sel', help='Selection of atom for the reference structure', type=str)
+    project_options.add_argument('--cluster', help='Project cluster data', action='store_true')
 
     pymol_options = parser.add_argument_group("Interactive Pymol session")
-    pymol_options.add_argument('--pymol',
-                               help='Open PyMol for Interactive visualization',
-                               action='store_true')
-    pymol_options.add_argument(
-        '--top',
-        help=
-        'Trajectory topology file in pdb format (for MD trajectory analysis only)',
-        type=str)
+    pymol_options.add_argument('--pymol', help='Open PyMol for Interactive visualization', action='store_true')
+    pymol_options.add_argument('--top',
+                               help='Trajectory topology file in pdb format (for MD trajectory analysis only)',
+                               type=str)
     pymol_options.add_argument('--traj', help='Trajectory file', type=str)
-    pymol_options.add_argument('--savesomtraj',
-                               help='Save the som as a dcd trajectory',
-                               action='store_true')
+    pymol_options.add_argument('--savesomtraj', help='Save the som as a dcd trajectory', action='store_true')
 
     args = parser.parse_args()
 
@@ -297,6 +250,8 @@ if __name__ == '__main__':
     scaling = args.scaling
     som = pickle.load(open(args.in_name, 'rb'))
     if not hasattr(som, 'mds'):
+        som.mds = None
+    if som.mds is None:
         embedding = MDS(n_components=2, dissimilarity='precomputed', n_jobs=-1)
         som.mds = embedding.fit_transform(som.all_to_all_dist)
         som.mds -= som.mds.min(axis=0)
@@ -325,13 +280,8 @@ if __name__ == '__main__':
             cmd.load_traj(args.traj, 'traj', state=1)
             confviewer = ConfViewer(bmus)
         else:
-            som_to_dcd(args.top,
-                       som.centroids,
-                       sel=args.sel,
-                       objname='traj',
-                       savetraj=False)
-            inds = np.asarray(
-                np.unravel_index(np.arange(som.m * som.n), (som.m, som.n))).T
+            som_to_dcd(args.top, som.centroids, sel=args.sel, objname='traj', savetraj=False)
+            inds = np.asarray(np.unravel_index(np.arange(som.m * som.n), (som.m, som.n))).T
             confviewer = ConfViewer(inds)
 
     if args.rmsd:
@@ -352,21 +302,14 @@ if __name__ == '__main__':
         if args.project is None:
             mapping = density
         else:
-            plt.scatter(som.mds[:, 0],
-                        som.mds[:, 1],
-                        s=args.size * 0.75,
-                        c='grey',
-                        cmap=cm,
-                        alpha=.75)
+            plt.scatter(som.mds[:, 0], som.mds[:, 1], s=args.size * 0.75, c='grey', cmap=cm, alpha=.75)
             mapping = projections
         if args.ref is not None:
             import pymol
             from pymol import cmd
             cmd.feedback('disable', 'all', 'everything')
             if 'traj' not in cmd.get_object_list():
-                som_to_dcd(
-                    args.top, som.centroids, sel=args.sel,
-                    objname='traj')  # This creates the traj PyMol object
+                som_to_dcd(args.top, som.centroids, sel=args.sel, objname='traj')  # This creates the traj PyMol object
             somsize = som.centroids.shape[0]
             for i, ref in enumerate(args.ref):
                 cmd.load(ref, f'ref_{i}')
@@ -375,14 +318,12 @@ if __name__ == '__main__':
                 else:
                     sel = f'ref_{i}'
                 cmd.create('traj', sel, 1, somsize + i + 1)
-                rmsd_ref = np.asarray(
-                    cmd.intra_fit('traj', somsize + i + 1)[:somsize])
+                rmsd_ref = np.asarray(cmd.intra_fit('traj', somsize + i + 1)[:somsize])
                 # Compute RMSD from the unique orientation with minimal RMSD
                 # coords_ref = coords_aligned[rmsd_ref.argmin()]
                 # rmsd_ref = np.sqrt(((som.centroids - coords_ref[None, ...])**2).sum(axis=1) / n_atoms)
                 ###############
-                min_coords = som.mds[rmsd_ref.argmin(
-                )]  # coords in the MDS map with minimal rmsd for ref_i
+                min_coords = som.mds[rmsd_ref.argmin()]  # coords in the MDS map with minimal rmsd for ref_i
                 rmsd_min = rmsd_ref[rmsd_ref.argmin()]
                 delta_rmsd = 0.1
                 rmsd_zone = (rmsd_ref <= rmsd_min + delta_rmsd)
@@ -390,24 +331,16 @@ if __name__ == '__main__':
                 if len(args.ref) > 1:
                     # {rmsd_min:.2f} Å
                     # text = f'{os.path.basename(os.path.splitext(ref)[0])[:4]} {rmsd_min:.2f} Å'
-                    print(
-                        f'{i}: {os.path.basename(os.path.splitext(ref)[0])} {rmsd_min:.2f} Å'
-                    )
+                    print(f'{i}: {os.path.basename(os.path.splitext(ref)[0])} {rmsd_min:.2f} Å')
                     text = f'{i}'
-                    delta_x, delta_y = som.mds.max(axis=0) - som.mds.min(
-                        axis=0)
+                    delta_x, delta_y = som.mds.max(axis=0) - som.mds.min(axis=0)
                     xytarget = min_coords
                     xynoise = np.asarray([
-                        np.random.uniform(low=-delta_x / 5.,
-                                          high=delta_x / 5.),
+                        np.random.uniform(low=-delta_x / 5., high=delta_x / 5.),
                         np.random.uniform(low=-delta_y / 5., high=delta_y / 5.)
                     ])
                     xytext = xytarget + xynoise
-                    plt.annotate(text,
-                                 xytarget,
-                                 xytext,
-                                 fontsize=8,
-                                 arrowprops=dict(arrowstyle='->', color='red'))
+                    plt.annotate(text, xytarget, xytext, fontsize=8, arrowprops=dict(arrowstyle='->', color='red'))
                     # color = plt.rcParams['axes.prop_cycle'].by_key()['color'][i]
                     # plt.scatter(min_coords[0], min_coords[1], s=50 * args.size, c=color, marker='*', zorder=3, label=f'{os.path.splitext(ref)[0]}: {rmsd_min:.2f} Å')
                     # plt.scatter(zone_coords[:, 0], zone_coords[:, 1], c=color, zorder=3, s=2 * args.size)
@@ -418,11 +351,7 @@ if __name__ == '__main__':
             # else:
             #     plt.legend(prop={'size': 10})
         if args.groups is None:
-            plt.scatter(som.mds[:, 0],
-                        som.mds[:, 1],
-                        s=args.size,
-                        c=mapping,
-                        cmap=cm)
+            plt.scatter(som.mds[:, 0], som.mds[:, 1], s=args.size, c=mapping, cmap=cm)
         else:
             groups = np.genfromtxt(args.groups, dtype=str)
             bmus_labels = get_bmu_labels(groups, bmus)
@@ -439,16 +368,8 @@ if __name__ == '__main__':
                 nlabels = len(labels)
                 nrows = min(3, nlabels // 2)
                 ncols = int(np.ceil(nlabels / nrows))
-                fig, axes = plt.subplots(nrows,
-                                         ncols,
-                                         sharex='all',
-                                         sharey='all')
-            plt.scatter(som.mds[:, 0],
-                        som.mds[:, 1],
-                        s=args.size * 0.75,
-                        c='grey',
-                        cmap=cm,
-                        alpha=.75)
+                fig, axes = plt.subplots(nrows, ncols, sharex='all', sharey='all')
+            plt.scatter(som.mds[:, 0], som.mds[:, 1], s=args.size * 0.75, c='grey', cmap=cm, alpha=.75)
             for i, label in enumerate(labels):
                 bmus_label = np.asarray(list(bmus_labels[label]))
                 color_ = colors.__next__()
@@ -489,10 +410,7 @@ if __name__ == '__main__':
             else:
                 cbar = plt.colorbar(label=args.label)
         if args.subplots:
-            fig.colorbar(im,
-                         ax=axes.ravel().tolist(),
-                         label='density',
-                         format='%.0e')
+            fig.colorbar(im, ax=axes.ravel().tolist(), label='density', format='%.0e')
         if args.clim is not None:
             plt.clim(args.clim[0], args.clim[1])
             cbarvals = cbar.get_ticks()
