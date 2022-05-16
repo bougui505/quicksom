@@ -134,7 +134,7 @@ class SOM:
             self.sigma = float(sigma)
 
         if centroids is None:
-            self.centroids = jax.device_put(np.random.randn(m * n, dim), device=device)
+            self.centroids = jax.device_put(np.abs(np.random.randn(m * n, dim)), device=device)
         else:
             self.centroids = centroids
 
@@ -568,7 +568,14 @@ class SOM:
             else:
                 neighbors = tuple(np.asarray(neighbor_dim2_grid(point, shape), dtype='int').T)
             smap_neighbor = smap[neighbors]
+            
+            #Adding a batch dimension to neuron
+            neuron = neuron[None, :]
+
             cdists = np.asarray(self.metric(smap_neighbor, neuron))
+
+            #Removing batch dimension to neuron and cdists
+            neuron = jnp.squeeze(neuron, axis=0)
             umatrix[point] = cdists.mean()
 
             adjmat['row'].extend([np.ravel_multi_index(point, shape), ] * len(neighbors[0]))
