@@ -168,7 +168,7 @@ class SOM(nn.Module):
             self.sigma = float(sigma)
 
         if centroids is None:
-            np_init = np.random.randn(m * n, dim)
+            np_init = np.abs(np.random.randn(m * n, dim))
             self.centroids = torch.from_numpy(np_init).float().to(device=device)
             # self.centroids = torch.randn(m * n, dim, device=device, dtype=torch.float)
         else:
@@ -576,20 +576,27 @@ class SOM(nn.Module):
 
             smap_torch, neuron_torch = torch.from_numpy(smap[neighbors]).to(self.device), \
                                        torch.from_numpy(neuron[None]).to(self.device)
-            torch_cdists = self.metric(smap_torch, neuron_torch)
+            
+            #Adding a batch dimension to neuron
+            neuron_torch = neuron_torch[None, :] 
+            torch_cdists = self.metric(neuron_torch, smap_torch)
             cdists = torch_cdists.cpu().numpy()
+            #Removing batch dimension to neuron and cdists
+            neuron_torch = torch.squeeze(neuron_torch, dim=0)
+            cdists = np.squeeze(cdists,axis=0)
+            #print(np.any(cdists<0))
             umatrix[point] = cdists.mean()
-
+            
             adjmat['row'].extend([
                                      np.ravel_multi_index(point, shape),
                                  ] * len(neighbors[0]))
             adjmat['col'].extend(np.ravel_multi_index(neighbors, shape))
-            adjmat['data'].extend(cdists[:, 0])
+            adjmat['data'].extend(cdists)
         if rmsd:
             natoms = smap.shape[-1] / 3.
             umatrix /= natoms
             umatrix = np.sqrt(umatrix)
-
+        #print(np.any(umatrix<0))
         if return_adjacency:
             adjmat = scipy.sparse.coo_matrix((adjmat['data'], (adjmat['row'], adjmat['col'])),
                                              shape=(np.prod(shape), np.prod(shape)))
