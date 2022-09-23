@@ -57,14 +57,19 @@ import torch.nn as nn
 
 
 class ArrayDataset(torch.utils.data.Dataset):
-    def __init__(self, nparr):
+    def __init__(self, nparr, labels=None):
         self.nparr = nparr
+        self.labels = labels
 
     def __len__(self):
         return len(self.nparr)
 
     def __getitem__(self, idx):
-        return idx, self.nparr[idx]
+        if self.labels is None:
+            label = idx
+        else:
+            label = self.labels[idx]
+        return label, self.nparr[idx]
 
 
 def build_dataloader(dataset, num_workers, batch_size, shuffle=True):
@@ -85,7 +90,7 @@ def check_symmetric(a):
     """
     Check if array a is symmetric
     """
-    relative_error = np.sqrt(np.mean((a - a.T) ** 2)) / np.sqrt((a ** 2).mean())
+    relative_error = np.sqrt(np.mean((a - a.T)**2)) / np.sqrt((a**2).mean())
     return relative_error
 
 
@@ -94,7 +99,7 @@ def symmetrize(a):
     symmetrize array a. Return the symmetrized array and the relative error
     """
     a_sym = (a + a.T) / 2.
-    relative_error = np.sqrt(np.mean((a - a_sym) ** 2)) / np.sqrt((a ** 2).mean())
+    relative_error = np.sqrt(np.mean((a - a_sym)**2)) / np.sqrt((a**2).mean())
     return a_sym, relative_error
 
 
@@ -122,7 +127,6 @@ class SOM(nn.Module):
     :param p_norm: p value for the p-norm distance to calculate between each vector pair for torch.cdist
     :param centroids: Initial som map to use. No random initialization
      """
-
     def __init__(self,
                  m,
                  n,
@@ -263,7 +267,7 @@ class SOM(nn.Module):
             return 1.0 - it / tot
         # half the lr 20 times
         if self.sched == 'half':
-            return 0.5 ** int(20 * it / tot)
+            return 0.5**int(20 * it / tot)
         # decay from 1 to exp(-5)
         if self.sched == 'exp':
             return np.exp(-5 * it / tot)
@@ -300,7 +304,7 @@ class SOM(nn.Module):
             for loc in bmu_loc:
                 bmu_distance_squares.append(self.get_bmu_distance_squares(loc))
             bmu_distance_squares = torch.stack(bmu_distance_squares)
-        neighbourhood_func = torch.exp(torch.neg(torch.div(bmu_distance_squares, 2 * sigma_op ** 2 + 1e-5)))
+        neighbourhood_func = torch.exp(torch.neg(torch.div(bmu_distance_squares, 2 * sigma_op**2 + 1e-5)))
         learning_rate_multiplier = alpha_op * neighbourhood_func
 
         # Take the difference of centroids with input and weight it with gaussian
@@ -422,8 +426,13 @@ class SOM(nn.Module):
         loc = self.locations[idx].view(-1, 2)
         return loc
 
-    def predict(self, dataset, batch_size=100, print_each=100,
-                return_density=False, return_errors=False, num_workers=os.cpu_count()):
+    def predict(self,
+                dataset,
+                batch_size=100,
+                print_each=100,
+                return_density=False,
+                return_errors=False,
+                num_workers=os.cpu_count()):
         """
         Batch the prediction to avoid memory overloading
         """
@@ -529,7 +538,6 @@ class SOM(nn.Module):
         """
         Compute the U-matrix based on a map of centroids and their connectivity.
         """
-
         def neighbor_dim2_toric(p, s):
             """
             Efficient toric neighborhood function for 2D SOM.
@@ -579,8 +587,8 @@ class SOM(nn.Module):
             umatrix[point] = cdists.mean()
 
             adjmat['row'].extend([
-                                     np.ravel_multi_index(point, shape),
-                                 ] * len(neighbors[0]))
+                np.ravel_multi_index(point, shape),
+            ] * len(neighbors[0]))
             adjmat['col'].extend(np.ravel_multi_index(neighbors, shape))
             adjmat['data'].extend(cdists[:, 0])
         if rmsd:
@@ -737,7 +745,7 @@ class SOM(nn.Module):
             dists = self.metric(batch, self.centroids).flatten()
             pdist.extend(list(dists.to('cpu')))
         pdist = np.asarray(pdist)
-        pdist = pdist.reshape((self.m * self.n,) * 2)
+        pdist = pdist.reshape((self.m * self.n, ) * 2)
         self.pairwise_dist = pdist
         return pdist
 
@@ -792,7 +800,7 @@ if __name__ == '__main__':
 
     # Create SOM
     n = 10
-    somsize = n ** 2
+    somsize = n**2
     nsamples = X.shape[0]
     dim = X.shape[1]
     niter = 5
