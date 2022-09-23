@@ -325,7 +325,7 @@ class SOM:
         x, batch_size = self.find_batchsize(x)
         dists = self.metric(x, self.centroids)
         idx = np.argsort(dists, -1)
-        selected = idx[:, :n_bmu]
+        selected = idx[:, :1]
         mindists = jnp.take_along_axis(dists, selected, axis=-1)
         return selected, mindists
 
@@ -414,11 +414,10 @@ class SOM:
         return learning_error
 
     def predict(self, dataset, batch_size=100, print_each=100,
-                return_density=False, return_errors=True, num_workers=os.cpu_count()):
+                return_density=False, return_errors=False, num_workers=os.cpu_count()):
         """
         Batch the prediction to avoid memory overloading
         """
-        num_workers = 1
         dataloader = build_dataloader(dataset, num_workers=num_workers, batch_size=batch_size, shuffle=False)
         bmus = list()
         errors = list()
@@ -434,7 +433,6 @@ class SOM:
             # If we want the topographic error, we need to compute more neighbors, and keep the indices
             bmu_idx, error = self.inference_call(batch, n_bmu=2 if return_errors else 1)
             if return_errors:
-                bmu_idx = np.array(bmu_idx)
                 bmu_indices.append(bmu_idx)
 
             # Then we can keep the first only and compute its bmu affectation
@@ -450,18 +448,16 @@ class SOM:
         bmus = jnp.concatenate(bmus)
         bmus = np.asarray(bmus)
         errors = jnp.concatenate(errors)
-        errors = np.asarray(errors)
-        bmu_indices = np.concatenate(bmu_indices)
-        bmu_indices = np.asarray(bmu_indices)
+        errors = np.asarray(errors).flatten()
 
-        default_return = [bmus, errors[:,0], labels]
+        default_return = [bmus, errors, labels]
         if return_density:
             density /= density.sum()
             default_return.append(density)
         # Optionnally compute errors
         if return_errors:
-            quantization_error = np.mean(errors[:, 0])
-            topo_dists = np.array([float(np.array(self.distance_mat[int(first), int(second)])) for first, second in bmu_indices]) 
+            quantization_error = np.mean(errors[:, :, 0])
+            topo_dists = np.array([self.distance_mat[int(first), int(second)] for first, second in bmu_indices])
             topo_error = np.sum(topo_dists > 1) / len(topo_dists)
             print(f'On these samples, the quantization error is {quantization_error:1f} '
                   f'and the topological error rate is {topo_error:1f}')
@@ -662,7 +658,6 @@ class SOM:
             # Renormalize
             umat = (umat - np.min(umat)) / (np.max(umat) - np.min(umat))
         self.umat = umat
-        #self.umat = -self.umat
         self.adj = adj
         if self.periodic and unfold:
             uumat, mapping = self._unfold(umat, adj)
