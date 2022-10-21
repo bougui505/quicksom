@@ -534,6 +534,67 @@ class SOM(nn.Module):
             uumat[v[0], v[1]] = umat[k[0], k[1]]
         return uumat, mapping
 
+    def _get_unfold_adj(self):
+
+        def neighbor_dim2(p,s):
+            """
+            Efficient grid neighborhood function for 2D SOM to get the neigbours of the unfold uumat
+            """
+            x, y = p
+            X, Y = s
+            xm = max((x - 1), 0)
+            ym = max((y - 1), 0)
+            xp = min((x + 1), X - 1)
+            yp = min((y + 1), Y - 1)
+            shortlist = {(xm, ym), (xm, y), (xm, yp), (x, ym), (x, yp), (xp, ym), (xp, y), (xp, yp)}
+            ushortlist = set()
+            fshortlist = set()
+            for uneig in shortlist:
+                try:
+                    fneig = self.reversed_mapping[uneig]
+                    ushortlist.add(uneig)
+                    fshortlist.add(fneig)
+                except:
+                    continue
+            ushortlist.discard((x, y))
+            fshortlist.discard(self.reversed_mapping[(x,y)])
+            if len(ushortlist) == 0:
+                print(p)
+                raise ValueError('Unconected node')
+            return list(ushortlist),list(fshortlist)
+
+        #Initalize data
+        smap = self.centroids.cpu().numpy().reshape((self.m, self.n, -1))
+        uadjmat = {'data': [], 'row': [], 'col': []}
+        if hasattr(self, 'uumat'):
+            pass
+        else:
+            self.compute_umat(unfold=True)
+        ushape = self.uumat.shape
+
+        #Loop thorugh all the uumat points to fill the uadjmat
+        for i, upoint in enumerate(itertools.product(*[range(s) for s in ushape])):
+            try:
+                fpoint = self.reversed_mapping[upoint]
+            except:
+                continue
+            neuron = smap[fpoint]
+            uneighbors, fneighbors = neighbor_dim2(upoint, ushape)
+            uneighbors = tuple(np.asarray(uneighbors,dtype='int').T)
+            fneighbors = tuple(np.asarray(fneighbors,dtype='int').T)
+            torch_smap_fneighbors = torch.from_numpy(smap[fneighbors]).to(self.device)
+            torch_smap_neuron = torch.from_numpy(neuron[None]).to(self.device)
+            torch_cdists = self.metric(torch_smap_fneighbors, torch_smap_neuron)
+            cdists = torch_cdists.cpu().numpy()
+            uadjmat['row'].extend([np.ravel_multi_index(upoint, ushape), ] * len(uneighbors[0]))
+            uadjmat['col'].extend(np.ravel_multi_index(uneighbors, ushape))
+            uadjmat['data'].extend(cdists[:, 0])
+
+        uadjmat = scipy.sparse.coo_matrix((uadjmat['data'], (uadjmat['row'], uadjmat['col'])), shape=(np.prod(ushape), np.prod(ushape)))
+
+        self.uadj = uadjmat
+
+
     def _get_umat(self, smap, shape=None, rmsd=False, return_adjacency=False, periodic=True):
         """
         Compute the U-matrix based on a map of centroids and their connectivity.
@@ -572,7 +633,6 @@ class SOM(nn.Module):
             shape = list(smap.shape)[:-1]
         umatrix = np.zeros(shape)
         adjmat = {'data': [], 'row': [], 'col': []}
-
         for point in itertools.product(*[range(s) for s in shape]):
             neuron = smap[point]
             if periodic:
