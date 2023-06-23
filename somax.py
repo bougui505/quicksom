@@ -162,7 +162,7 @@ class SOM:
         """
         for k, v in vars(self).items():
             var = v
-            if isinstance(var, jax.interpreters.xla._DeviceArray):
+            if isinstance(var, jax.Array):
                 var = jax.device_put(var, device=device)
                 self.__dict__[k] = var
         return self
@@ -513,9 +513,9 @@ class SOM:
         for k, v in mapping.items():
             uumat[v[0], v[1]] = umat[k[0], k[1]]
         return uumat, mapping
-    
+
     def _get_unfold_adj(self):
-        
+
         def neighbor_dim2(p,s):
             """
             Efficient grid neighborhood function for 2D SOM to get the neigbours of the unfold uumat
@@ -542,7 +542,7 @@ class SOM:
                 print(p)
                 raise ValueError('Unconected node')
             return list(ushortlist),list(fshortlist)
- 
+
         #Initalize data
         smap = np.asarray(self.centroids).reshape((self.m, self.n, -1))
         uadjmat = {'data': [], 'row': [], 'col': []}
@@ -551,7 +551,7 @@ class SOM:
         else:
             self.compute_umat(unfold=True)
         ushape = self.uumat.shape
-        
+
         #Loop thorugh all the uumat points to fill the uadjmat
         for i, upoint in enumerate(itertools.product(*[range(s) for s in ushape])):
             try:
@@ -566,7 +566,7 @@ class SOM:
             neuron = neuron[None, :]
             cdists = np.asarray(self.metric(smap_neighbor, neuron))
             neuron = jnp.squeeze(neuron, axis=0)
-                        
+
             uadjmat['row'].extend([np.ravel_multi_index(upoint, ushape), ] * len(uneighbors[0]))
             uadjmat['col'].extend(np.ravel_multi_index(uneighbors, ushape))
             uadjmat['data'].extend(cdists[:, 0])
@@ -625,7 +625,7 @@ class SOM:
             else:
                 neighbors = tuple(np.asarray(neighbor_dim2_grid(point, shape), dtype='int').T)
             smap_neighbor = smap[neighbors]
-            
+
             #Adding a batch dimension to neuron
             neuron = neuron[None, :]
 
