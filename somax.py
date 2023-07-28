@@ -782,8 +782,10 @@ class SOM:
             return self.clusters_user.flatten()[flat_bmus], error
 
     def save_pickle(self, outname):
-        del self.device
-        del self.metric
+        if hasattr(self,'device'):
+            del self.device
+        if hasattr(self,'metric'):
+            del self.metric
         pickle.dump(self, open(outname, 'wb'))
 
     @staticmethod
