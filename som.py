@@ -140,7 +140,8 @@ class SOM(nn.Module):
                  periodic=False,
                  metric=None,
                  p_norm=2,
-                 centroids=None):
+                 centroids=None,
+                 seed=0):
 
         # topology of the som
         super(SOM, self).__init__()
@@ -170,8 +171,10 @@ class SOM(nn.Module):
             self.sigma = np.sqrt(self.m * self.n) / 2.0
         else:
             self.sigma = float(sigma)
+        self.seed = seed
 
         if centroids is None:
+            np.random.seed(self.seed)
             np_init = np.random.randn(m * n, dim)
             self.centroids = torch.from_numpy(np_init).float().to(device=device)
             # self.centroids = torch.randn(m * n, dim, device=device, dtype=torch.float)

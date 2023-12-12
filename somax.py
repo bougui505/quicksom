@@ -105,7 +105,8 @@ class SOM:
                  precompute=True,
                  periodic=False,
                  metric=None,
-                 centroids=None):
+                 centroids=None,
+                 seed=0):
 
         # topology of the som
         super(SOM, self).__init__()
@@ -132,8 +133,10 @@ class SOM:
             self.sigma = np.sqrt(self.m * self.n) / 2.0
         else:
             self.sigma = float(sigma)
+        self.seed = seed
 
         if centroids is None:
+            np.random.seed(self.seed)
             self.centroids = jax.device_put(np.abs(np.random.randn(m * n, dim)), device=device)
         else:
             self.centroids = centroids
