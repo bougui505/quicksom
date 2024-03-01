@@ -35,25 +35,24 @@
 #                                                                           #
 #############################################################################
 
-import os
-import sys
 import datetime
 import functools
 import itertools
-import matplotlib.pyplot as plt
+import os
 import pickle
+import sys
 import time
 
+import matplotlib.pyplot as plt
 import numpy as np
-import scipy.spatial
 import scipy.sparse
 import scipy.sparse.csgraph as graph
+import scipy.spatial
+import torch
+import torch.nn as nn
 from skimage.feature import peak_local_max
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.manifold import MDS
-
-import torch
-import torch.nn as nn
 
 
 class ArrayDataset(torch.utils.data.Dataset):
@@ -317,7 +316,8 @@ class SOM(nn.Module):
         expanded_x = x.expand(-1, self.grid_size, -1)
         expanded_weights = self.centroids.unsqueeze(0).expand((batch_size, -1, -1))
         delta = expanded_x - expanded_weights
-        delta = torch.mul(learning_rate_multiplier.reshape(*learning_rate_multiplier.size(), 1).expand_as(delta), delta)
+        # delta = torch.mul(learning_rate_multiplier.reshape(*learning_rate_multiplier.size(), 1).expand_as(delta), delta)
+        delta.mul_(learning_rate_multiplier.reshape(*learning_rate_multiplier.size(), 1).expand_as(delta))
 
         # import functorch
         #
